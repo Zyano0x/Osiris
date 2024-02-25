@@ -11,7 +11,6 @@
 #include <Helpers/UnloadFlag.h>
 #include <Hooks/Hooks.h>
 #include <Hooks/PeepEventsHook.h>
-#include <MemoryPatterns/ClientModePatterns.h>
 #include <MemoryPatterns/ClientPatterns.h>
 #include <MemoryPatterns/FileSystemPatterns.h>
 #include <MemoryPatterns/GameRulesPatterns.h>
@@ -24,6 +23,7 @@
 #include <MemoryPatterns/PanoramaUiPanelPatterns.h>
 #include <MemoryPatterns/PlantedC4Patterns.h>
 #include <MemoryPatterns/SoundSystemPatterns.h>
+#include <MemoryPatterns/TopLevelWindowPatterns.h>
 #include <MemorySearch/PatternFinder.h>
 #include <UI/Panorama/PanoramaGUI.h>
 #include <Platform/DynamicLibrary.h>
@@ -35,7 +35,6 @@
 struct FullGlobalContext {
     FullGlobalContext(PeepEventsHook peepEventsHook, DynamicLibrary clientDLL, DynamicLibrary panoramaDLL, const PatternFinder<PatternNotFoundLogger>& clientPatternFinder, const PatternFinder<PatternNotFoundLogger>& panoramaPatternFinder, const PatternFinder<PatternNotFoundLogger>& soundSystemPatternFinder, const FileSystemPatterns& fileSystemPatterns) noexcept
         : _gameClasses{
-            ClientModePatterns{clientPatternFinder},
             ClientPatterns{clientPatternFinder},
             fileSystemPatterns,
             GameRulesPatterns{clientPatternFinder},
@@ -48,6 +47,7 @@ struct FullGlobalContext {
             PanoramaUiPanelPatterns{clientPatternFinder, panoramaPatternFinder},
             PlantedC4Patterns{clientPatternFinder},
             EntitySystemPatterns{clientPatternFinder},
+            TopLevelWindowPatterns{panoramaPatternFinder},
             Tier0Dll{}}
         , hooks{
             peepEventsHook,
@@ -97,9 +97,8 @@ struct FullGlobalContext {
         return PeepEventsHookResult{hooks.peepEventsHook.original, static_cast<bool>(unloadFlag)};
     }
 
-    [[nodiscard]] cs2::CLoopModeGame::getWorldSession getWorldSessionHook(ReturnAddress returnAddress) noexcept
+    [[nodiscard]] cs2::CLoopModeGame::getWorldSession getWorldSessionHook(ReturnAddress) noexcept
     {
-        featureHelpers.sniperScopeBlurRemover.getWorldSessionHook(returnAddress);
         return hooks.loopModeGameHook.originalGetWorldSession;
     }
 

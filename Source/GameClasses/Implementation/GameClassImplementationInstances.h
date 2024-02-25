@@ -1,6 +1,5 @@
 #pragma once
 
-#include "ClientModeImpl.h"
 #include "EntitySystemImpl.h"
 #include "FileNameSymbolTableImpl.h"
 #include "FileSystemImpl.h"
@@ -13,13 +12,9 @@
 #include "PanoramaUiEngineImpl.h"
 #include "PanoramaUiPanelImpl.h"
 #include "PlantedC4Impl.h"
+#include "TopLevelWindowImpl.h"
 
 #include <GlobalContext/GlobalContext.h>
-
-inline const ClientModeImpl& ClientModeImpl::instance() noexcept
-{
-    return GlobalContext::instance().fullContext().gameClasses().clientMode;
-}
 
 inline const EntitySystemImpl& EntitySystemImpl::instance() noexcept
 {
@@ -79,4 +74,9 @@ inline const PanoramaUiPanelImpl& PanoramaUiPanelImpl::instance() noexcept
 inline const PlantedC4Impl& PlantedC4Impl::instance() noexcept
 {
     return GlobalContext::instance().fullContext().gameClasses().plantedC4;
+}
+
+inline const TopLevelWindowImpl& TopLevelWindowImpl::instance() noexcept
+{
+    return GlobalContext::instance().fullContext().gameClasses().topLevelWindow;
 }

@@ -4,6 +4,7 @@
 
 #include <Platform/Macros/IsPlatform.h>
 #include <Platform/Macros/PlatformSpecific.h>
+#include <Utils/Pad.h>
 
 #include "Color.h"
 #include "CUtlMap.h"
@@ -24,6 +25,8 @@ struct PanelHandle {
     {
         return panelIndex != -1;
     }
+
+    [[nodiscard]] constexpr bool operator==(const PanelHandle&) const = default;
 };
 
 struct CUIPanel;
@@ -75,6 +78,16 @@ struct CUILength {
         k_EUILengthPercent
     };
 
+    [[nodiscard]] static CUILength pixels(float value) noexcept
+    {
+        return CUILength{value, k_EUILengthLength};
+    }
+
+    [[nodiscard]] static CUILength percent(float value) noexcept
+    {
+        return CUILength{value, k_EUILengthPercent};
+    }
+
     float m_flValue;
     EUILengthTypes m_eType;
 };
@@ -119,6 +132,46 @@ struct CStylePropertyImageShadow : CStyleProperty {
     Color color;
 };
 
+struct CStylePropertyPosition : CStyleProperty {
+    static constexpr auto kName{"position"};
+    static constexpr auto kMangledTypeName{WIN32_LINUX(".?AVCStylePropertyPosition@panorama@@", "N8panorama22CStylePropertyPositionE")};
+
+    CUILength x;
+    CUILength y;
+    CUILength z;
+};
+
+struct CStylePropertyTransformOrigin : CStyleProperty {
+    static constexpr auto kName{"transform-origin"};
+    static constexpr auto kMangledTypeName{WIN32_LINUX(".?AVCStylePropertyTransformOrigin@panorama@@", "N8panorama29CStylePropertyTransformOriginE")};
+
+    CUILength x;
+    CUILength y;
+    bool m_bParentRelative;
+};
+
+enum EHorizontalAlignment : std::uint8_t {
+	k_EHorizontalAlignmentUnset,
+	k_EHorizontalAlignmentLeft,
+	k_EHorizontalAlignmentCenter,
+	k_EHorizontalAlignmentRight
+};
+
+enum EVerticalAlignment : std::uint8_t {
+	k_EVerticalAlignmentUnset,
+	k_EVerticalAlignmentTop,
+	k_EVerticalAlignmentCenter,
+	k_EVerticalAlignmentBottom
+};
+
+struct CStylePropertyAlign : CStyleProperty {
+    static constexpr auto kName{"align"};
+    static constexpr auto kMangledTypeName{WIN32_LINUX(".?AVCStylePropertyAlign@panorama@@", "N8panorama19CStylePropertyAlignE")};
+
+    EHorizontalAlignment m_eHorizontalAlignment;
+    EVerticalAlignment m_eVerticalAlignment;
+};
+
 struct CPanelStyle {
     using SetProperty = void(CPanelStyle* thisptr, CStyleProperty* styleProperty, bool transition);
 
@@ -139,8 +192,16 @@ struct CUIPanel {
     using classesVector = CUtlVector<CPanoramaSymbol>;
 };
 
+struct ImageProperties {
+    PAD(16);
+    int textureWidth;
+    int textureHeight;
+    float scale;
+};
+
 struct CImagePanel : CPanel2D {
-    using setImage = void (*)(CImagePanel* thisptr, const char* imageUrl);
+    using Constructor = void(CImagePanel* thisptr, CPanel2D* parent, const char* id);
+    using SetImage = void(CImagePanel* thisptr, const char* imageUrl, const char* defaultImageUrl, ImageProperties* properties);
 };
 
 struct CTransform3D {
@@ -155,6 +216,10 @@ struct CTransformTranslate3D : CTransform3D {
 
 struct CTransformScale3D : CTransform3D {
     Vector m_VecScale;
+};
+
+struct CTopLevelWindow {
+    using m_flScaleFactor = float;
 };
 
 }

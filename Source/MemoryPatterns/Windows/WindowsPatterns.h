@@ -1,6 +1,5 @@
 #pragma once
 
-#include "ClientModePatternsWindows.h"
 #include "ClientPatternsWindows.h"
 #include "EntitySystemPatternsWindows.h"
 #include "FileSystemPatternsWindows.h"
@@ -15,3 +14,4 @@
 #include "PlantedC4PatternsWindows.h"
 #include "SdlPatternWindows.h"
 #include "SoundSystemPatternsWindows.h"
+#include "TopLevelWindowPatternsWindows.h"

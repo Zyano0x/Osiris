@@ -1,6 +1,5 @@
 #pragma once
 
-#include "ClientModeImpl.h"
 #include "EntitySystemImpl.h"
 #include "FileNameSymbolTableImpl.h"
 #include "FileSystemImpl.h"
@@ -13,12 +12,12 @@
 #include "PanoramaUiEngineImpl.h"
 #include "PanoramaUiPanelImpl.h"
 #include "PlantedC4Impl.h"
+#include "TopLevelWindowImpl.h"
 
 #include <Platform/VmtFinder.h>
 
 struct GameClassImplementations {
-    GameClassImplementations(const ClientModePatterns& clientModePatterns,
-                             const ClientPatterns& clientPatterns,
+    GameClassImplementations(const ClientPatterns& clientPatterns,
                              const FileSystemPatterns& fileSystemPatterns,
                              const GameRulesPatterns& gameRulesPatterns,
                              const MemAllocPatterns& memAllocPatterns,
@@ -30,9 +29,9 @@ struct GameClassImplementations {
                              const PanoramaUiPanelPatterns& panoramaUiPanelPatterns,
                              const PlantedC4Patterns& plantedC4Patterns,
                              const EntitySystemPatterns& entitySystemPatterns,
+                             const TopLevelWindowPatterns& topLevelWindowPatterns,
                              Tier0Dll tier0Dll) noexcept
-        : clientMode{clientModePatterns}
-        , entitySystem{entitySystemPatterns}
+        : entitySystem{entitySystemPatterns}
         , fileNameSymbolTable{tier0Dll}
         , fileSystem{fileSystemPatterns}
         , gameRules{gameRulesPatterns}
@@ -44,10 +43,10 @@ struct GameClassImplementations {
         , uiEngine{clientPatterns, panoramaUiEnginePatterns}
         , panoramaUiPanelOffsets{panoramaUiPanelPatterns}
         , plantedC4{plantedC4Patterns}
+        , topLevelWindow{topLevelWindowPatterns}
     {
     }
 
-    ClientModeImpl clientMode;
     EntitySystemImpl entitySystem;
     FileNameSymbolTableImpl fileNameSymbolTable;
     FileSystemImpl fileSystem;
@@ -60,4 +59,5 @@ struct GameClassImplementations {
     PanoramaUiEngineImpl uiEngine;
     PanoramaUiPanelImpl panoramaUiPanelOffsets;
     PlantedC4Impl plantedC4;
+    TopLevelWindowImpl topLevelWindow;
 };
