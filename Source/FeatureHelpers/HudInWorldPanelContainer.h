@@ -1,10 +1,8 @@
 #pragma once
 
-#include <GameClasses/Panel.h>
+#include <GameClasses/Hud/Hud.h>
 #include <GameClasses/PanoramaUiPanel.h>
-#include <Helpers/HudProvider.h>
 #include <Helpers/PanoramaPanelPointer.h>
-#include "PanelConfigurator.h"
 
 class HudInWorldPanelContainer {
 public:
@@ -20,25 +18,25 @@ public:
             PanoramaUiEngine::onDeletePanel(containerPanel.getHandle());
     }
 
-    [[nodiscard]] PanoramaUiPanel get(HudProvider hudProvider, PanelConfigurator panelConfigurator) noexcept
+    template <typename Dependencies>
+    [[nodiscard]] auto get(Hud<Dependencies> hud, auto& hookContext) noexcept
     {
         if (const auto container = containerPanel.get())
-            return container;
-        return createPanel(hudProvider, panelConfigurator);
+            return PanoramaUiPanel{PanoramaUiPanelContext{hookContext, container}};
+        return createPanel(hud, hookContext);
     }
 
 private:
-    [[nodiscard]] PanoramaUiPanel createPanel(HudProvider hudProvider, PanelConfigurator panelConfigurator) noexcept
+    template <typename Dependencies>
+    [[nodiscard]] auto createPanel(Hud<Dependencies> hud, auto& hookContext) noexcept
     {
-        if (const auto hudReticle = hudProvider.getHudReticle()) {
-            if (const auto panel = Panel::create("", hudReticle)) {
-                if (const auto style{PanoramaUiPanel{panel->uiPanel}.getStyle()})
-                    panelConfigurator.panelStyle(*style).fitParent();
-                containerPanel = panel->uiPanel;
-                return PanoramaUiPanel{ panel->uiPanel };
-            }
+        if (const auto hudReticle = hud.getHudReticle()) {
+            auto&& panel = hookContext.panelFactory().createPanel(hudReticle).uiPanel();
+            panel.fitParent();
+            containerPanel.handle = panel.getHandle();
+            return panel;
         }
-        return PanoramaUiPanel{ nullptr };
+        return PanoramaUiPanel{PanoramaUiPanelContext{hookContext, nullptr}};
     }
 
     PanoramaPanelPointer containerPanel;

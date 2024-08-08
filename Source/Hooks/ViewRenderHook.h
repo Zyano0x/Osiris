@@ -1,7 +1,6 @@
 #pragma once
 
 #include <CS2/Classes/CViewRender.h>
-#include <MemoryPatterns/ClientPatterns.h>
 #include <Utils/RefCountedHook.h>
 #include <Vmt/VmtSwapper.h>
 
@@ -9,8 +8,8 @@ extern "C" void ViewRenderHook_onRenderStart_asm(cs2::CViewRender* thisptr) noex
 
 class ViewRenderHook : public RefCountedHook<ViewRenderHook> {
 public:
-    ViewRenderHook(const ClientPatterns& clientPatterns, const VmtLengthCalculator& vmtLengthCalculator) noexcept
-        : viewRender{clientPatterns.viewRender()}
+    ViewRenderHook(cs2::CViewRender** viewRender, const VmtLengthCalculator& vmtLengthCalculator) noexcept
+        : viewRender{viewRender}
         , vmtLengthCalculator{vmtLengthCalculator}
     {
     }

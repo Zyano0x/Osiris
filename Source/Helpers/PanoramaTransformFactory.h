@@ -5,18 +5,22 @@
 
 #include <CS2/Classes/Panorama.h>
 #include <GameClasses/MemAlloc.h>
-#include <MemoryPatterns/ClientPatterns.h>
 
 struct PanoramaTransformFactory {
-    explicit PanoramaTransformFactory(const ClientPatterns& clientPatterns) noexcept
-        : transformTranslate3dVmt{clientPatterns.transformTranslate3dVMT()}
-        , transformScale3dVmt{clientPatterns.transformScale3dVMT()}
+    explicit PanoramaTransformFactory(const void* transformTranslate3dVmt, const void* transformScale3dVmt) noexcept
+        : transformTranslate3dVmt{transformTranslate3dVmt}
+        , transformScale3dVmt{transformScale3dVmt}
     {
     }
 
     [[nodiscard]] cs2::CTransform3D* scale(float scale) const noexcept
     {
         return create<cs2::CTransformScale3D>(scale, scale, 1.0f);
+    }
+
+    [[nodiscard]] cs2::CTransform3D* scale(float scaleX, float scaleY) const noexcept
+    {
+        return create<cs2::CTransformScale3D>(scaleX, scaleY, 1.0f);
     }
 
     [[nodiscard]] cs2::CTransform3D* translate(cs2::CUILength x, cs2::CUILength y) const noexcept

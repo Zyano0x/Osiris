@@ -5,11 +5,10 @@
 #include "ClipSpaceCoordinates.h"
 #include <CS2/Classes/Vector.h>
 #include <CS2/Classes/VMatrix.h>
-#include <MemoryPatterns/ClientPatterns.h>
 
 struct WorldToClipSpaceConverter {
-    explicit WorldToClipSpaceConverter(const ClientPatterns& clientPatterns) noexcept
-        : worldToProjectionMatrix{clientPatterns.worldToProjectionMatrix()}
+    explicit WorldToClipSpaceConverter(const cs2::VMatrix* worldToProjectionMatrix) noexcept
+        : worldToProjectionMatrix{worldToProjectionMatrix}
     {
     }
 

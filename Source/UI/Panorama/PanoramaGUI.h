@@ -1,21 +1,16 @@
 #pragma once
 
 #include <CS2/Classes/Panorama.h>
-#include <FeatureHelpers/MainMenuProvider.h>
-#include <Features/Visuals/ScopeOverlayRemover.h>
-#include <MemoryPatterns/ClientPatterns.h>
-#include <string_view>
 #include <Utils/StringParser.h>
 #include <Helpers/UnloadFlag.h>
-#include <FeatureHelpers/TogglableFeature.h>
+#include <FeatureHelpers/FeatureToggle.h>
 
 #include "PanoramaCommandDispatcher.h"
 
 class PanoramaGUI {
 public:
-    void init(MainMenuProvider mainMenuProvider) noexcept
+    void init(auto&& mainMenu) noexcept
     {
-        const PanoramaUiPanel mainMenu{mainMenuProvider.getMainMenuPanel()};
         if (!mainMenu)
             return;
 
@@ -25,7 +20,7 @@ public:
 
         const auto settings = mainMenu.findChildInLayoutFile("JsSettings");
         if (settings)
-            settingsPanelPtr = settings;
+            settingsPanelPtr.handle = settings.getHandle();
 
         PanoramaUiEngine::runScript(settings, reinterpret_cast<const char*>(
 #include "CreateGUI.js"
@@ -51,10 +46,10 @@ public:
 )", "", 0);
 
         if (const auto guiButtonPanel = mainMenu.findChildInLayoutFile("OsirisOpenMenuButton"))
-            guiButtonPointer = guiButtonPanel;
+            guiButtonPointer.handle = guiButtonPanel.getHandle();
 
         if (const auto guiPanel = mainMenu.findChildInLayoutFile("OsirisMenuTab"))
-            guiPanelPointer = guiPanel;
+            guiPanelPointer.handle = guiPanel.getHandle();
     }
 
     ~PanoramaGUI() noexcept
@@ -69,9 +64,9 @@ public:
             PanoramaUiEngine::runScript(settingsPanel, "delete $.Osiris", "", 0);
     }
 
-    void run(Features features, UnloadFlag& unloadFlag) const noexcept
+    void run(HookDependencies& hookDependencies, Features features, UnloadFlag& unloadFlag) const noexcept
     {
-        const auto guiPanel = guiPanelPointer.get();
+        const auto guiPanel = PanoramaUiPanel{PanoramaUiPanelContext{hookDependencies, guiPanelPointer.get()}};
         if (!guiPanel)
             return;
 

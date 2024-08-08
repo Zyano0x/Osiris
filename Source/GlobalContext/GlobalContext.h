@@ -2,7 +2,6 @@
 
 #include <cstddef>
 #include <span>
-#include <variant>
 
 #include <BuildConfig.h>
 #include <CS2/Constants/DllNames.h>
@@ -12,13 +11,15 @@
 #include <Platform/DynamicLibrary.h>
 #include <SDL/SdlDll.h>
 
+#include "DeferredCompleteObject.h"
 #include "FullGlobalContext.h"
 #include "PartialGlobalContext.h"
 
 class GlobalContext {
 public:
-    explicit GlobalContext(std::span<std::byte> memoryStorage) noexcept
+    explicit GlobalContext(std::span<std::byte> memoryStorage, DynamicLibrary clientDLL, DynamicLibrary panoramaDLL, SdlDll sdlDll) noexcept
         : _freeRegionList{memoryStorage}
+        , deferredCompleteContext{clientDLL, panoramaDLL, sdlDll}
     {
     }
 
@@ -26,10 +27,8 @@ public:
     {
         if (!globalContext.isInitialized()) {
             alignas(FreeMemoryRegionList::minimumAlignment()) static constinit std::byte storage[build::MEMORY_CAPACITY];
-            globalContext.initialize(storage);
-            const SdlDll sdlDll;
-            const PatternFinder<PatternNotFoundLogger> sdlPatternFinder{sdlDll.getCodeSection().raw()};
-            globalContext->variantContext.emplace<PartialGlobalContext>(sdlDll, SdlPatterns{sdlPatternFinder}).enableIfValid();
+            globalContext.initialize(storage, DynamicLibrary{cs2::CLIENT_DLL}, DynamicLibrary{cs2::PANORAMA_DLL}, SdlDll{});
+            globalContext->deferredCompleteContext.partial().enableIfValid();
         }
     }
 
@@ -50,47 +49,37 @@ public:
 
     [[nodiscard]] FullGlobalContext& fullContext() noexcept
     {
-        assert(std::holds_alternative<FullGlobalContext>(variantContext));
-        return *std::get_if<FullGlobalContext>(&variantContext);
+        return deferredCompleteContext.complete();
     }
 
     [[nodiscard]] PeepEventsHookResult peepEventsHook() noexcept
     {
-        initializeFullContextFromGameThread();
+        initializeCompleteContextFromGameThread();
         return fullContext().onPeepEventsHook();
     }
 
 private:
-    void initializeFullContextFromGameThread() noexcept
+    void initializeCompleteContextFromGameThread() noexcept
     {
-        if (!std::holds_alternative<PartialGlobalContext>(variantContext))
+        if (deferredCompleteContext.isComplete())
             return;
 
-        const DynamicLibrary panoramaDLL{cs2::PANORAMA_DLL};
-        const DynamicLibrary clientDLL{cs2::CLIENT_DLL};
+        const auto partialContext = deferredCompleteContext.partial();
 
-        const PatternFinder<PatternNotFoundLogger> clientPatternFinder{clientDLL.getCodeSection().raw()};
-        const PatternFinder<PatternNotFoundLogger> panoramaPatternFinder{panoramaDLL.getCodeSection().raw()};
-        const PatternFinder<PatternNotFoundLogger> soundSystemPatternFinder{DynamicLibrary{cs2::SOUNDSYSTEM_DLL}.getCodeSection().raw()};
-        const PatternFinder<PatternNotFoundLogger> fileSystemPatternFinder{DynamicLibrary{cs2::FILESYSTEM_DLL}.getCodeSection().raw()};
-
-        const FileSystemPatterns fileSystemPatterns{soundSystemPatternFinder, fileSystemPatternFinder};
-
-        variantContext.emplace<FullGlobalContext>(
-            std::get_if<PartialGlobalContext>(&variantContext)->peepEventsHook,
-            clientDLL,
-            panoramaDLL,
-            clientPatternFinder, 
-            panoramaPatternFinder, 
-            soundSystemPatternFinder, 
-            fileSystemPatterns
+        deferredCompleteContext.makeComplete(
+            partialContext.peepEventsHook,
+            partialContext.clientDLL,
+            partialContext.panoramaDLL,
+            MemoryPatterns{partialContext.patternFinders}
         );
 
-        fullContext().panoramaGUI.init(fullContext().getFeatureHelpers().mainMenuProvider);
+        HookDependencies hookDependencies{fullContext().gameDependencies(), fullContext().getFeatureHelpers()};
+        if (const auto mainMenu{fullContext().gameDependencies().mainMenu}; mainMenu && *mainMenu)
+            fullContext().panoramaGUI.init(PanoramaUiPanel{PanoramaUiPanelContext{hookDependencies, (*mainMenu)->uiPanel}});
     }
 
     FreeMemoryRegionList _freeRegionList;
-    std::variant<std::monostate, PartialGlobalContext, FullGlobalContext> variantContext;
+    DeferredCompleteObject<PartialGlobalContext, FullGlobalContext> deferredCompleteContext;
 
     static constinit ManuallyDestructible<GlobalContext> globalContext;
 };

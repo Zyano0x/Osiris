@@ -1,7 +1,7 @@
 #pragma once
 
 #include <Features/Features.h>
-#include <FeatureHelpers/TogglableFeature.h>
+#include <FeatureHelpers/FeatureToggle.h>
 #include <Utils/StringParser.h>
 
 struct SetCommandHandler {
@@ -26,46 +26,71 @@ private:
     void handleHudSection() const noexcept
     {
         if (const auto feature = parser.getLine('/'); feature == "bomb_timer") {
-            handleTogglableFeature(features.hudFeatures().bombTimer());
+            handleTogglableFeature(features.hudFeatures().bombTimerToggle());
         } else if (feature == "defusing_alert") {
-            handleTogglableFeature(features.hudFeatures().defusingAlert());
+            handleTogglableFeature(features.hudFeatures().defusingAlertToggle());
         } else if (feature == "preserve_killfeed") {
-            handleTogglableFeature(features.hudFeatures().killfeedPreserver());
+            handleTogglableFeature(features.hudFeatures().killfeedPreserveToggle());
         }
     }
 
     void handleSoundSection() const noexcept
     {
         if (const auto feature = parser.getLine('/'); feature == "visualize_player_footsteps") {
-            handleTogglableFeature(features.soundFeatures().footstepVisualizer());
+            handleTogglableFeature(features.soundFeatures().footstepVisualizerToggle());
         } else if (feature == "visualize_bomb_plant") {
-            handleTogglableFeature(features.soundFeatures().bombPlantVisualizer());
+            handleTogglableFeature(features.soundFeatures().bombPlantVisualizerToggle());
         } else if (feature == "visualize_bomb_beep") {
-            handleTogglableFeature(features.soundFeatures().bombBeepVisualizer());
+            handleTogglableFeature(features.soundFeatures().bombBeepVisualizerToggle());
         } else if (feature == "visualize_bomb_defuse") {
-            handleTogglableFeature(features.soundFeatures().bombDefuseVisualizer());
+            handleTogglableFeature(features.soundFeatures().bombDefuseVisualizerToggle());
         } else if (feature == "visualize_scope_sound") {
-            handleTogglableFeature(features.soundFeatures().weaponScopeVisualizer());
+            handleTogglableFeature(features.soundFeatures().weaponScopeVisualizerToggle());
         } else if (feature == "visualize_reload_sound") {
-            handleTogglableFeature(features.soundFeatures().weaponReloadVisualizer());
+            handleTogglableFeature(features.soundFeatures().weaponReloadVisualizerToggle());
         }
     }
 
     void handleVisualsSection() const noexcept
     {
-        if (const auto feature = parser.getLine('/'); feature == "remove_scope_overlay") {
-            handleTogglableFeature(features.visualFeatures().scopeOverlayRemover());
+        if (const auto feature = parser.getLine('/'); feature == "player_information_through_walls") {
+            handleFeature(features.visualFeatures().playerInformationThroughWalls());
+        } else if (feature == "player_info_position") {
+            handleTogglableFeature(features.visualFeatures().playerPositionToggle());
+        } else if (feature == "player_info_position_color") {
+            handleFeature(features.visualFeatures().playerPositionArrowColorToggle());
+        } else if (feature == "player_info_health") {
+            handleTogglableFeature(features.visualFeatures().playerHealthToggle());
+        } else if (feature == "player_info_health_color") {
+            handleFeature(features.visualFeatures().playerHealthTextColorToggle());
+        } else if (feature == "player_info_weapon") {
+            handleTogglableFeature(features.visualFeatures().playerActiveWeaponToggle());
+        } else if (feature == "player_info_weapon_clip") {
+            handleTogglableFeature(features.visualFeatures().playerActiveWeaponAmmoToggle());
+        } else if (feature == "player_info_defuse") {
+            handleFeature(features.visualFeatures().playerDefuseIconToggle());
+        } else if (feature == "player_info_hostage_pickup") {
+            handleFeature(features.visualFeatures().hostagePickupIconToggle());
+        } else if (feature == "player_info_hostage_rescue") {
+            handleFeature(features.visualFeatures().hostageRescueIconToggle());
+        } else if (feature == "player_info_blinded") {
+            handleFeature(features.visualFeatures().blindedIconToggle());
         }
     }
 
     template <typename Feature>
-    void handleTogglableFeature(TogglableFeature<Feature>&& feature) const noexcept
+    void handleFeature(Feature&& feature) const noexcept
+    {
+        feature.update(parser.getChar());
+    }
+
+    void handleTogglableFeature(auto&& feature) const noexcept
     {
         switch (parser.getChar()) {
-        case '0':
+        case '1':
             feature.disable();
             break;
-        case '1':
+        case '0':
             feature.enable();
             break;
         default:

@@ -40,6 +40,36 @@ struct SoundFeatures {
         return soundVisualizationFeature<WeaponReloadVisualizer>(states.weaponReloadVisualizerState);
     }
 
+    [[nodiscard]] auto footstepVisualizerToggle() const noexcept
+    {
+        return soundVisualizationFeatureToggle<FootstepSound>(states.footstepVisualizerState);
+    }
+
+    [[nodiscard]] auto bombPlantVisualizerToggle() const noexcept
+    {
+        return soundVisualizationFeatureToggle<BombPlantSound>(states.bombPlantVisualizerState);
+    }
+
+    [[nodiscard]] auto bombBeepVisualizerToggle() const noexcept
+    {
+        return soundVisualizationFeatureToggle<BombBeepSound>(states.bombBeepVisualizerState);
+    }
+
+    [[nodiscard]] auto bombDefuseVisualizerToggle() const noexcept
+    {
+        return soundVisualizationFeatureToggle<BombDefuseSound>(states.bombDefuseVisualizerState);
+    }
+
+    [[nodiscard]] auto weaponScopeVisualizerToggle() const noexcept
+    {
+        return soundVisualizationFeatureToggle<WeaponScopeSound>(states.weaponScopeVisualizerState);
+    }
+
+    [[nodiscard]] auto weaponReloadVisualizerToggle() const noexcept
+    {
+        return soundVisualizationFeatureToggle<WeaponReloadSound>(states.weaponReloadVisualizerState);
+    }
+
     void runOnViewMatrixUpdate() noexcept
     {
         footstepVisualizer().run();
@@ -53,6 +83,7 @@ struct SoundFeatures {
     SoundFeaturesStates& states;
     FeatureHelpers& helpers;
     ViewRenderHook& viewRenderHook;
+    HookDependencies& hookDependencies;
 
 private:
     template <typename SoundVisualizationFeature>
@@ -60,15 +91,22 @@ private:
     {
         return SoundVisualizationFeature{
             state,
+            hookDependencies,
             viewRenderHook,
-            helpers.soundWatcher,
-            helpers.hudInWorldPanelContainer,
-            helpers.globalVarsProvider,
-            helpers.transformFactory,
-            helpers.worldtoClipSpaceConverter,
-            helpers.viewToProjectionMatrix,
-            helpers.panelConfigurator(),
-            helpers.hudProvider
+            SoundWatcher{helpers.soundWatcherState, hookDependencies},
+            helpers.hudInWorldPanelContainer
+        };
+    }
+
+    template <typename SoundType>
+    [[nodiscard]] SoundVisualizationFeatureToggle<SoundType> soundVisualizationFeatureToggle(auto& state) const noexcept
+    {
+        return SoundVisualizationFeatureToggle<SoundType>{
+            state,
+            hookDependencies,
+            SoundWatcher{helpers.soundWatcherState, hookDependencies},
+            viewRenderHook,
+            helpers.hudInWorldPanelContainer
         };
     }
 };

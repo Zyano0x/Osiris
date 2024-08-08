@@ -1,8 +1,8 @@
 #pragma once
 
-#include "Hud/States/HudFeaturesStates.h"
+#include "Hud/HudFeaturesStates.h"
 #include "Sound/SoundFeaturesStates.h"
-#include "Visuals/States/VisualFeaturesStates.h"
+#include "Visuals/VisualFeaturesStates.h"
 
 struct FeaturesStates {
     HudFeaturesStates hudFeaturesStates;

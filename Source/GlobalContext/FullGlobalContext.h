@@ -1,29 +1,18 @@
 #pragma once
 
 #include <CS2/Classes/CLoopModeGame.h>
-#include <GameClasses/Implementation/GameClassImplementations.h>
+#include <GameDependencies/GameDependencies.h>
 #include <GameDLLs/Tier0Dll.h>
 #include <FeatureHelpers/FeatureHelpers.h>
+#include <FeatureHelpers/RenderingHookEntityLoop.h>
 #include <FeatureHelpers/Sound/SoundWatcher.h>
 #include <Features/Features.h>
 #include <Features/FeaturesStates.h>
+#include <Features/FeaturesUnloadHandler.h>
 #include <Helpers/PatternNotFoundLogger.h>
 #include <Helpers/UnloadFlag.h>
 #include <Hooks/Hooks.h>
 #include <Hooks/PeepEventsHook.h>
-#include <MemoryPatterns/ClientPatterns.h>
-#include <MemoryPatterns/FileSystemPatterns.h>
-#include <MemoryPatterns/GameRulesPatterns.h>
-#include <MemoryPatterns/MemAllocPatterns.h>
-#include <MemoryPatterns/PanelPatterns.h>
-#include <MemoryPatterns/PanelStylePatterns.h>
-#include <MemoryPatterns/PanoramaImagePanelPatterns.h>
-#include <MemoryPatterns/PanoramaLabelPatterns.h>
-#include <MemoryPatterns/PanoramaUiEnginePatterns.h>
-#include <MemoryPatterns/PanoramaUiPanelPatterns.h>
-#include <MemoryPatterns/PlantedC4Patterns.h>
-#include <MemoryPatterns/SoundSystemPatterns.h>
-#include <MemoryPatterns/TopLevelWindowPatterns.h>
 #include <MemorySearch/PatternFinder.h>
 #include <UI/Panorama/PanoramaGUI.h>
 #include <Platform/DynamicLibrary.h>
@@ -32,42 +21,29 @@
 
 #include "PeepEventsHookResult.h"
 
+#include <CS2/Classes/ConVarTypes.h>
+
 struct FullGlobalContext {
-    FullGlobalContext(PeepEventsHook peepEventsHook, DynamicLibrary clientDLL, DynamicLibrary panoramaDLL, const PatternFinder<PatternNotFoundLogger>& clientPatternFinder, const PatternFinder<PatternNotFoundLogger>& panoramaPatternFinder, const PatternFinder<PatternNotFoundLogger>& soundSystemPatternFinder, const FileSystemPatterns& fileSystemPatterns) noexcept
-        : _gameClasses{
-            ClientPatterns{clientPatternFinder},
-            fileSystemPatterns,
-            GameRulesPatterns{clientPatternFinder},
-            MemAllocPatterns{clientPatternFinder},
-            PanelPatterns{clientPatternFinder},
-            PanelStylePatterns{panoramaPatternFinder},
-            PanoramaImagePanelPatterns{clientPatternFinder},
-            PanoramaLabelPatterns{clientPatternFinder},
-            PanoramaUiEnginePatterns{panoramaPatternFinder},
-            PanoramaUiPanelPatterns{clientPatternFinder, panoramaPatternFinder},
-            PlantedC4Patterns{clientPatternFinder},
-            EntitySystemPatterns{clientPatternFinder},
-            TopLevelWindowPatterns{panoramaPatternFinder},
+    FullGlobalContext(PeepEventsHook peepEventsHook, DynamicLibrary clientDLL, DynamicLibrary panoramaDLL, const MemoryPatterns& memoryPatterns) noexcept
+        : _gameDependencies{
+            memoryPatterns,
+            VmtFinder{clientDLL.getVmtFinderParams()},
+            VmtFinder{panoramaDLL.getVmtFinderParams()},
             Tier0Dll{}}
         , hooks{
             peepEventsHook,
-            ClientPatterns{clientPatternFinder},
+            _gameDependencies.loopModeGame,
+            _gameDependencies.viewRender,
             VmtLengthCalculator{clientDLL.getCodeSection(), clientDLL.getVmtSection()}}
-        , featureHelpers{
-            ClientPatterns{clientPatternFinder},
-            PanelStylePatterns{panoramaPatternFinder},
-            fileSystemPatterns,
-            SoundSystemPatterns{soundSystemPatternFinder},
-            VmtFinder{panoramaDLL.getVmtFinderParams()}}
     {
     }
 
-    [[nodiscard]] const GameClassImplementations& gameClasses() const noexcept
+    [[nodiscard]] GameDependencies& gameDependencies() noexcept
     {
-        return _gameClasses;
+        return _gameDependencies;
     }
 
-    [[nodiscard]] const FeatureHelpers& getFeatureHelpers() const noexcept
+    [[nodiscard]] FeatureHelpers& getFeatureHelpers() noexcept
     {
         return featureHelpers;
     }
@@ -75,24 +51,33 @@ struct FullGlobalContext {
     void onRenderStart(cs2::CViewRender* thisptr) noexcept
     {
         hooks.viewRenderHook.getOriginalOnRenderStart()(thisptr);
-        if (featureHelpers.globalVarsProvider && featureHelpers.globalVarsProvider.getGlobalVars())
-            featureHelpers.soundWatcher.update(featureHelpers.globalVarsProvider.getGlobalVars()->curtime);
-        features().soundFeatures().runOnViewMatrixUpdate();
+
+        HookDependencies dependencies{_gameDependencies, featureHelpers};
+        SoundWatcher soundWatcher{featureHelpers.soundWatcherState, dependencies};
+        soundWatcher.update();
+        features(dependencies).soundFeatures().runOnViewMatrixUpdate();
+
+        PlayerInformationThroughWalls playerInformationThroughWalls{featuresStates.visualFeaturesStates.playerInformationThroughWallsState, dependencies};
+        RenderingHookEntityLoop{dependencies, playerInformationThroughWalls}.run();
+        playerInformationThroughWalls.hideUnusedPanels();
     }
 
     [[nodiscard]] PeepEventsHookResult onPeepEventsHook() noexcept
     {
-        features().hudFeatures().bombTimer().run();
-        features().hudFeatures().defusingAlert().run();
-        features().hudFeatures().killfeedPreserver().run();
+        HookDependencies dependencies{_gameDependencies, featureHelpers};
+
+        features(dependencies).hudFeatures().bombTimer().run();
+        features(dependencies).hudFeatures().defusingAlert().run();
+        features(dependencies).hudFeatures().killfeedPreserver().run();
 
         UnloadFlag unloadFlag;
-        panoramaGUI.run(features(), unloadFlag);
+        panoramaGUI.run(dependencies, features(dependencies), unloadFlag);
         hooks.update();
-        features().visualFeatures().scopeOverlayRemover().updatePanelVisibility();
 
-        if (unloadFlag)
+        if (unloadFlag) {
+            FeaturesUnloadHandler{dependencies, featuresStates}.handleUnload();
             hooks.forceUninstall();
+        }
 
         return PeepEventsHookResult{hooks.peepEventsHook.original, static_cast<bool>(unloadFlag)};
     }
@@ -103,12 +88,12 @@ struct FullGlobalContext {
     }
 
 private:
-    [[nodiscard]] Features features() noexcept
+    [[nodiscard]] Features features(HookDependencies& dependencies) noexcept
     {
-        return Features{featuresStates, featureHelpers, hooks};
+        return Features{featuresStates, featureHelpers, hooks, dependencies};
     }
 
-    GameClassImplementations _gameClasses;
+    GameDependencies _gameDependencies;
     Hooks hooks;
     FeatureHelpers featureHelpers;
     FeaturesStates featuresStates;

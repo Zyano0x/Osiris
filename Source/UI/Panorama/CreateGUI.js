@@ -150,7 +150,7 @@ $.Osiris = (function () {
     return content;
   };
 
-  var createEnableDisableDropDown = function (parent, labelText, section, feature, enableString, disableString) {
+  var createDropDown = function (parent, labelText, section, feature, options, defaultIndex = 1) {
     var container = $.CreatePanel('Panel', parent, '', {
       class: "SettingsMenuDropdownContainer"
     });
@@ -165,26 +165,23 @@ $.Osiris = (function () {
       oninputsubmit: `$.Osiris.dropDownUpdated('${section}', '${feature}');`
     });
 
-    dropdown.AddOption($.CreatePanel('Label', dropdown, '1', {
-      value: "1",
-      text: enableString
-    }));
+    for (let i = 0; i < options.length; ++i) {
+      dropdown.AddOption($.CreatePanel('Label', dropdown, i, {
+      value: i,
+      text: options[i]
+      }));
+    }
 
-    dropdown.AddOption($.CreatePanel('Label', dropdown, '0', {
-      value: "0",
-      text: disableString
-    }));
-
-    dropdown.SetSelectedIndex(1);
+    dropdown.SetSelectedIndex(defaultIndex);
     dropdown.RefreshDisplay();
   };
 
   var createOnOffDropDown = function (parent, labelText, section, feature) {
-    createEnableDisableDropDown(parent, labelText, section, feature, "On", "Off");
+    createDropDown(parent, labelText, section, feature, ["On", "Off"]);
   };
 
-  var createYesNoDropDown = function (parent, labelText, section, feature) {
-    createEnableDisableDropDown(parent, labelText, section, feature, "Yes", "No");
+  var createYesNoDropDown = function (parent, labelText, section, feature, defaultIndex = 1) {
+    createDropDown(parent, labelText, section, feature, ["Yes", "No"], defaultIndex);
   };
 
   var hud = createTab('hud');
@@ -196,9 +193,29 @@ $.Osiris = (function () {
   createYesNoDropDown(killfeed, "Preserve My Killfeed During The Round", 'hud', 'preserve_killfeed');
 
   var visuals = createTab('visuals');
-  var weapons = createSection(visuals, 'Weapons');
-  $.CreatePanel('Panel', weapons, '', { class: "horizontal-separator" });
-  createYesNoDropDown(weapons, "Remove Sniper Rifle Scope Overlay", 'visuals', 'remove_scope_overlay');
+
+  var playerInfo = createSection(visuals, 'Player Information Through Walls');
+  createDropDown(playerInfo, "Enabled", 'visuals', 'player_information_through_walls', ['Enemies', 'All Players', 'Off'], 2);
+  $.CreatePanel('Panel', playerInfo, '', { class: "horizontal-separator" });
+  createYesNoDropDown(playerInfo, "Show Player Position", 'visuals', 'player_info_position', 0);
+  $.CreatePanel('Panel', playerInfo, '', { class: "horizontal-separator" });
+  createDropDown(playerInfo, "Player Position Arrow Color", 'visuals', 'player_info_position_color', ['Player / Team Color', 'Team Color'], 0);
+  $.CreatePanel('Panel', playerInfo, '', { class: "horizontal-separator" });
+  createYesNoDropDown(playerInfo, "Show Player Health", 'visuals', 'player_info_health', 0);
+  $.CreatePanel('Panel', playerInfo, '', { class: "horizontal-separator" });
+  createDropDown(playerInfo, "Player Health Text Color", 'visuals', 'player_info_health_color', ['Health-based', 'White'], 0);
+  $.CreatePanel('Panel', playerInfo, '', { class: "horizontal-separator" });
+  createYesNoDropDown(playerInfo, "Show Player Active Weapon Icon", 'visuals', 'player_info_weapon', 0);
+  $.CreatePanel('Panel', playerInfo, '', { class: "horizontal-separator" });
+  createYesNoDropDown(playerInfo, "Show Player Active Weapon Ammo", 'visuals', 'player_info_weapon_clip', 0);
+  $.CreatePanel('Panel', playerInfo, '', { class: "horizontal-separator" });
+  createYesNoDropDown(playerInfo, "Show Defuse Icon", 'visuals', 'player_info_defuse', 0);
+  $.CreatePanel('Panel', playerInfo, '', { class: "horizontal-separator" });
+  createYesNoDropDown(playerInfo, 'Show Picking Up Hostage Icon', 'visuals', 'player_info_hostage_pickup', 0);
+  $.CreatePanel('Panel', playerInfo, '', { class: "horizontal-separator" });
+  createYesNoDropDown(playerInfo, 'Show Rescuing Hostage Icon', 'visuals', 'player_info_hostage_rescue', 0);
+  $.CreatePanel('Panel', playerInfo, '', { class: "horizontal-separator" });
+  createYesNoDropDown(playerInfo, 'Show Blinded By Flashbang Icon', 'visuals', 'player_info_blinded', 0);
 
   var sound = createTab('sound');
   

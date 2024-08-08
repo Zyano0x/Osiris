@@ -7,10 +7,10 @@
 #include <Vmt/VmtLengthCalculator.h>
 
 struct Hooks {
-    Hooks(PeepEventsHook peepEventsHook, const ClientPatterns& clientPatterns, const VmtLengthCalculator& clientVmtLengthCalculator) noexcept
+    Hooks(PeepEventsHook peepEventsHook, cs2::CLoopModeGame** loopModeGame, cs2::CViewRender** viewRender, const VmtLengthCalculator& clientVmtLengthCalculator) noexcept
         : peepEventsHook{peepEventsHook}
-        , loopModeGameHook{clientPatterns, clientVmtLengthCalculator}
-        , viewRenderHook{clientPatterns, clientVmtLengthCalculator}
+        , loopModeGameHook{loopModeGame, clientVmtLengthCalculator}
+        , viewRenderHook{viewRender, clientVmtLengthCalculator}
     {
     }
 

@@ -2,11 +2,10 @@
 
 #include <CS2/Classes/VMatrix.h>
 #include <CS2/Constants/AspectRatio.h>
-#include <MemoryPatterns/ClientPatterns.h>
 
 struct ViewToProjectionMatrix {
-    explicit ViewToProjectionMatrix(const ClientPatterns& clientPatterns) noexcept
-        : viewToProjectionMatrix{clientPatterns.viewToProjectionMatrix()}
+    explicit ViewToProjectionMatrix(const cs2::VMatrix* viewToProjectionMatrix) noexcept
+        : viewToProjectionMatrix{viewToProjectionMatrix}
     {
     }
 

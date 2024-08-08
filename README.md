@@ -3,15 +3,29 @@
 ![Windows](https://github.com/danielkrupinski/Osiris/workflows/Windows/badge.svg?branch=master&event=push)
 ![Linux](https://github.com/danielkrupinski/Osiris/workflows/Linux/badge.svg?branch=master&event=push)
 
-Free and open-source game hack for **Counter-Strike 2**. Compatible with the latest Steam version of the game. Cross-platform - available for Windows and Linux systems.
+Cross-platform (Windows, Linux) game hack for **Counter-Strike 2** with GUI and rendering based on game's Panorama UI. Compatible with the latest game update on Steam.
 
 ## What's new
 
-* 16 December 2023 - **Remove Sniper Scope Blur** function was added to **Visuals**
-* 6 December 2023 - **Visualize Weapon Reload Sound** function was added to **Sound**
-* 2 December 2023 - **Visualize Weapon Scope Sound** function was added to **Sound**
-* 23 November 2023 - **Visualize Bomb Defuse** function was added to **Sound**
-* 16 November 2023 - **Visualize Bomb Beep** function was added to **Sound**
+* 20 May 2024 - Implemented showing players' active weapon ammo
+
+![Player active weapon ammo](https://github.com/danielkrupinski/Osiris/assets/34515229/9a6dfc37-ee9f-4b70-9b1f-0e4465bf58fb)
+
+* 15 May 2024 - Implemented showing an icon on player blinded by a flashbang
+
+![Player blinded by flashbang](https://github.com/danielkrupinski/Osiris/assets/34515229/18b10e66-545a-449f-8783-691d5c1b2003)
+
+* 14 May 2024 - Implemented showing an icon on player rescuing a hostage
+
+![Player rescuing hostage](https://github.com/danielkrupinski/Osiris/assets/34515229/057b6dc7-1b54-44c0-9443-6917d2394335)
+
+* 7 May 2024 - Implemented showing an icon on player picking up a hostage
+
+![Player picking up hostage](https://github.com/danielkrupinski/Osiris/assets/34515229/d3a27f1a-dd79-4d18-bfbb-d8bb8c47ae2d)
+
+* 6 May 2024 - Adjusted "Bomb timer" appearance. Implemented showing an icon on player defusing the bomb
+
+![Player defusing icon](https://github.com/danielkrupinski/Osiris/assets/34515229/4addfc99-27d8-4f9d-a1b7-eb2b7c7565bd)
 
 ## Technical features
 
@@ -73,6 +87,6 @@ However, this injection method might be detected by VAC as gdb is visible under 
 
 ## License
 
-> Copyright (c) 2018-2023 Daniel Krupiński
+> Copyright (c) 2018-2024 Daniel Krupiński
 
 This project is licensed under the [MIT License](https://opensource.org/licenses/mit-license.php) - see the [LICENSE](https://github.com/danielkrupinski/Osiris/blob/master/LICENSE) file for details.
