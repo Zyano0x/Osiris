@@ -1,6 +1,6 @@
 .globl SDLHook_PeepEvents_asm
-.globl LoopModeGameHook_getWorldSession_asm
 .globl ViewRenderHook_onRenderStart_asm
+.globl PlayerPawn_sceneObjectUpdater_asm
 
 SDLHook_PeepEvents_asm:
     push %rdi # backup volatile registers used in the original function
@@ -16,12 +16,9 @@ SDLHook_PeepEvents_asm:
     pop %rdi
     jmp *%rax # jump to the original function
 
-LoopModeGameHook_getWorldSession_asm:
-    push %rdi # backup volatile rdi used in the original function
-    mov 8(%rsp), %rdi # load return address into rdi
-    call LoopModeGameHook_getWorldSession_cpp
-    pop %rdi
-    jmp *%rax # jump to the original function
-
 ViewRenderHook_onRenderStart_asm:
     jmp ViewRenderHook_onRenderStart_cpp
+
+.align 2 # scene object updater is stored in a tagged pointer on Linux so we align the address to ensure the tag bit is not set
+PlayerPawn_sceneObjectUpdater_asm:
+    jmp PlayerPawn_sceneObjectUpdater_cpp

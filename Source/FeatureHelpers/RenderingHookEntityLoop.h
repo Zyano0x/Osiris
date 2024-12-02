@@ -1,42 +1,42 @@
 #pragma once
 
 #include <CS2/Classes/Entities/CEntityInstance.h>
-#include <Features/Visuals/PlayerInformationThroughWalls/PlayerInformationThroughWalls.h>
+#include <Features/Visuals/ModelGlow/ModelGlow.h>
+#include <Features/Visuals/OutlineGlow/OutlineGlow.h>
+#include <Features/Visuals/PlayerInfoInWorld/PlayerInfoInWorld.h>
 
-#include "EntityFromHandleFinder.h"
-
-#include <HookDependencies/HookDependenciesMask.h>
-
+template <typename HookContext>
 class RenderingHookEntityLoop {
 public:
-    explicit RenderingHookEntityLoop(HookDependencies& dependencies, PlayerInformationThroughWalls& playerInformationThroughWalls) noexcept
-        : dependencies{dependencies}
+    explicit RenderingHookEntityLoop(HookContext& hookContext, PlayerInfoInWorld<HookContext>& playerInformationThroughWalls) noexcept
+        : hookContext{hookContext}
         , playerInformationThroughWalls{playerInformationThroughWalls}
     {
     }
 
     void run() const noexcept
     {
-        if (!dependencies.requestDependencies(kCrucialDependencies))
-            return;
-
-        dependencies.getDependency<EntityListWalker>().iterateEntities([this](auto& entity) { handleEntity(entity); });
+        hookContext.template make<EntitySystem>().iterateEntities([this](auto& entity) { handleEntity(entity); });
+        hookContext.template make<ModelGlow>().onEntityListTraversed();
     }
 
 private:
-    static constexpr auto kCrucialDependencies{
-        HookDependenciesMask{}
-        .set<EntityListWalker>()
-    };
-
     void handleEntity(cs2::CEntityInstance& entity) const noexcept
     {
-        if (dependencies.gameDependencies().entitiesVMTs.isPlayerPawn(entity.vmt)) {
-            auto& playerPawn = static_cast<cs2::C_CSPlayerPawn&>(entity);
+        auto&& baseEntity = hookContext.template make<BaseEntity>(static_cast<cs2::C_BaseEntity*>(&entity));
+
+        const auto entityTypeInfo = hookContext.entityClassifier().classifyEntity(hookContext.gameDependencies().entitiesVMTs, entity.vmt);
+
+        if (entityTypeInfo.template is<cs2::C_CSPlayerPawn>()) {
+            auto&& playerPawn = hookContext.template make<PlayerPawn>(static_cast<cs2::C_CSPlayerPawn*>(&entity));
             playerInformationThroughWalls.drawPlayerInformation(playerPawn);
+            hookContext.template make<ModelGlow>().updateSceneObjectUpdaterHook(playerPawn);
         }
+
+        if (entityTypeInfo.isModelEntity())
+            hookContext.template make<OutlineGlow>().applyGlowToEntity(entityTypeInfo, baseEntity.template as<BaseModelEntity>());
     }
 
-    HookDependencies& dependencies;
-    PlayerInformationThroughWalls& playerInformationThroughWalls;
+    HookContext& hookContext;
+    PlayerInfoInWorld<HookContext>& playerInformationThroughWalls;
 };

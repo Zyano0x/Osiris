@@ -2,8 +2,6 @@
 
 #include <cstring>
 
-#include <CS2/Classes/Panorama.h>
-#include <GameDependencies/PanoramaUiPanelDeps.h>
 #include <GameClasses/TopLevelWindow.h>
 #include <FeatureHelpers/PanelStylePropertyFactory.h>
 #include <Utils/Lvalue.h>
@@ -13,20 +11,16 @@
 struct PanelAlignmentParams;
 struct PanelMarginParams;
 
-template <typename Context>
+template <typename HookContext, typename Context = PanoramaUiPanelContext<HookContext>>
 struct PanoramaUiPanel {
-    explicit PanoramaUiPanel(Context context) noexcept
-        : context{context}
+    template <typename... Args>
+        requires std::is_constructible_v<Context, Args...>
+    explicit PanoramaUiPanel(Args&&... args) noexcept
+        : context{std::forward<Args>(args)...}
     {
     }
 
-    template <typename HookContext>
-    PanoramaUiPanel(HookContext& hookContext, cs2::CUIPanel* panel) noexcept
-        : context{hookContext, panel}
-    {
-    }
-
-    template <template <typename> typename T>
+    template <template <typename...> typename T>
     [[nodiscard]] decltype(auto) as() const noexcept
     {
         return context.template as<T>();
@@ -89,7 +83,7 @@ struct PanoramaUiPanel {
         }
 
         for (auto&& childPanel : childPanels) {
-            if (!childPanel.hasOwnLayoutFile().value_or(true)) {
+            if (!childPanel.hasOwnLayoutFile().valueOr(true)) {
                 if (auto&& foundPanel = childPanel.findChildInLayoutFile(childId))
                     return utils::lvalue<decltype(foundPanel)>(foundPanel);
             }
@@ -116,12 +110,12 @@ struct PanoramaUiPanel {
         return context.classes().hasClass(className);
     }
 
-    [[nodiscard]] std::optional<bool> hasOwnLayoutFile() const noexcept
+    [[nodiscard]] auto hasOwnLayoutFile() const noexcept
     {
         return context.hasFlag(cs2::k_EPanelFlag_HasOwnLayoutFile);
     }
 
-    [[nodiscard]] std::optional<bool> isVisible() const noexcept
+    [[nodiscard]] auto isVisible() const noexcept
     {
         return context.hasFlag(cs2::k_EPanelFlag_IsVisible);
     }
@@ -206,6 +200,16 @@ struct PanoramaUiPanel {
         context.setProperty(context.propertyFactory().margin(params));
     }
 
+    void setMixBlendMode(cs2::EMixBlendMode mode) const noexcept
+    {
+        context.setProperty(context.propertyFactory().mixBlendMode(mode));
+    }
+
+    void setTextAlign(cs2::ETextAlign textAlign) const noexcept
+    {
+        context.setProperty(context.propertyFactory().textAlign(textAlign));
+    }
+
     void setColor(cs2::Color color) const noexcept
     {
         context.setSimpleForegroundColor(color);
@@ -216,16 +220,11 @@ struct PanoramaUiPanel {
         context.setTransform3D(transforms);
     }
 
-    [[nodiscard]] float getUiScaleFactor() const noexcept
+    [[nodiscard]] decltype(auto) getUiScaleFactor() const noexcept
     {
-        if (auto&& parentWindow = context.getParentWindow())
-            return parentWindow.getUiScaleFactor();
-        return 1.0f;
+        return context.getParentWindow().getUiScaleFactor();
     }
 
 private:
     Context context;
 };
-
-template <typename HookContext>
-PanoramaUiPanel(HookContext&, cs2::CUIPanel*) -> PanoramaUiPanel<PanoramaUiPanelContext<HookContext>>;

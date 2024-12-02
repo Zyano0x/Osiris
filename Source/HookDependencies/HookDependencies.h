@@ -1,69 +1,74 @@
 #pragma once
 
-#include "HookDependenciesBuilder.h"
-#include "HookDependenciesMask.h"
-#include <FeatureHelpers/EntityFromHandleFinder.h>
-#include <FeatureHelpers/EntityListWalker.h>
+#include <Entities/GameRules.h>
+#include <Entities/PlantedC4.h>
+#include <Entities/PlayerController.h>
+#include <FeatureHelpers/ConVarAccessor.h>
+#include <FeatureHelpers/ConVarFinder.h>
 #include <GameClasses/FileSystem.h>
 #include <GameClasses/Hud/Hud.h>
 #include <GameClasses/Hud/HudContext.h>
 #include <GameClasses/PanelFactory.h>
-#include <GameClasses/Panels.h>
-#include <GameClasses/PlantedC4.h>
 #include <GameClasses/GlobalVars.h>
-#include <GameClasses/GameRules.h>
+#include <Helpers/PanoramaTransformFactory.h>
 
+struct BombStatusPanelState;
+struct FeaturesStates;
+struct PanoramaGuiState;
+struct GlowSceneObjectsState;
+struct Hooks;
+class EntityClassifier;
+
+template <typename FullGlobalContext>
 struct HookDependencies {
-    HookDependencies(GameDependencies& gameDependencies, FeatureHelpers& featureHelpers) noexcept
-        : _gameDependencies{gameDependencies}
-        , featureHelpers{featureHelpers}
+    HookDependencies(FullGlobalContext& fullGlobalContext) noexcept
+        : fullGlobalContext{fullGlobalContext}
     {
-        if (gameDependencies.worldToProjectionMatrix)
-            presentDependencies |= HookDependenciesMask{}.set<WorldToClipSpaceConverter>();
-    }
-
-    [[nodiscard]] bool requestDependencies(HookDependenciesMask requiredDependencies) noexcept
-    {
-        prepareDependencies(requiredDependencies.difference(presentDependencies));
-        return presentDependencies.contains(requiredDependencies);
-    }
-
-    template <typename Dependency>
-    [[nodiscard]] bool requestDependency() noexcept
-    {
-        if (!hasDependency<Dependency>())
-            prepareDependencies(HookDependenciesMask{}.set<Dependency>());
-        return hasDependency<Dependency>();
-    }
-
-    template <typename Dependency>
-    [[nodiscard]] decltype(auto) getDependency() noexcept
-    {
-        assert(hasDependency<Dependency>());
-
-        if constexpr (std::is_same_v<Dependency, EntityListWalker>) {
-            return EntityListWalker{*entityList, highestEntityIndex};
-        } else if constexpr (std::is_same_v<Dependency, EntityFromHandleFinder>) {
-            return EntityFromHandleFinder{*entityList};
-        } else if constexpr (std::is_same_v<Dependency, WorldToClipSpaceConverter>) {
-            return WorldToClipSpaceConverter{_gameDependencies.worldToProjectionMatrix};
-        } else if constexpr (std::is_same_v<Dependency, SoundChannels>) {
-            return (*soundChannels);
-        } else if constexpr (std::is_same_v<Dependency, FileSystem>) {
-            return FileSystem{*fileSystem, _gameDependencies.fileSystemDeps};
-        } else {
-            static_assert(!std::is_same_v<Dependency, Dependency>, "Unknown dependency");
-        }
     }
 
     [[nodiscard]] GameDependencies& gameDependencies() const noexcept
     {
-        return _gameDependencies;
+        return fullGlobalContext.gameDependencies;
     }
 
-    [[nodiscard]] FeatureHelpers& getFeatureHelpers() const noexcept
+    [[nodiscard]] SoundWatcherState& soundWatcherState() const noexcept
     {
-        return featureHelpers;
+        return fullGlobalContext.soundWatcherState;
+    }
+
+    [[nodiscard]] BombStatusPanelState& bombStatusPanelState() const noexcept
+    {
+        return fullGlobalContext.bombStatusPanelState;
+    }
+
+    [[nodiscard]] InWorldPanelContainerState& inWorldPanelContainerState() const noexcept
+    {
+        return fullGlobalContext.inWorldPanelContainerState;
+    }
+
+    [[nodiscard]] PanoramaGuiState& panoramaGuiState() const noexcept
+    {
+        return fullGlobalContext.panoramaGuiState;
+    }
+
+    [[nodiscard]] FeaturesStates& featuresStates() const noexcept
+    {
+        return fullGlobalContext.featuresStates;
+    }
+
+    [[nodiscard]] GlowSceneObjectsState& glowSceneObjectsState() const noexcept
+    {
+        return fullGlobalContext.glowSceneObjectsState;
+    }
+
+    [[nodiscard]] EntityClassifier& entityClassifier() const noexcept
+    {
+        return fullGlobalContext.entityClassifier;
+    }
+
+    [[nodiscard]] Hooks& hooks() const noexcept
+    {
+        return fullGlobalContext.hooks;
     }
 
     [[nodiscard]] auto hud() noexcept
@@ -71,44 +76,41 @@ struct HookDependencies {
         return Hud{HudContext{*this}};
     }
 
-    [[nodiscard]] cs2::CCSPlayerController* localPlayerController() const noexcept
+    [[nodiscard]] auto localPlayerController() noexcept
     {
-        if (_gameDependencies.localPlayerController)
-            return *_gameDependencies.localPlayerController;
-        return nullptr;
+        if (fullGlobalContext.clientPatternSearchResults.template get<LocalPlayerControllerPointer>())
+            return PlayerController{*this, *fullGlobalContext.clientPatternSearchResults.template get<LocalPlayerControllerPointer>()};
+        return PlayerController{*this, nullptr};
     }
 
     [[nodiscard]] GlobalVars globalVars() noexcept
     {
-        if (_gameDependencies.globalVarsDeps.globalVars)
-            return GlobalVars{*_gameDependencies.globalVarsDeps.globalVars};
+        if (fullGlobalContext.clientPatternSearchResults.template get<GlobalVarsPointer>())
+            return GlobalVars{*fullGlobalContext.clientPatternSearchResults.template get<GlobalVarsPointer>()};
         return GlobalVars{nullptr};
     }
 
-    [[nodiscard]] GameRules gameRules() noexcept
+    [[nodiscard]] auto gameRules() noexcept
     {
-        if (_gameDependencies.gameRulesDeps.gameRules)
-            return GameRules{*_gameDependencies.gameRulesDeps.gameRules};
-        return GameRules{nullptr};
+        if (fullGlobalContext.clientPatternSearchResults.template get<GameRulesPointer>())
+            return GameRules{*this, *fullGlobalContext.clientPatternSearchResults.template get<GameRulesPointer>()};
+        return GameRules{*this, nullptr};
     }
 
     [[nodiscard]] auto plantedC4() noexcept
     {
-        const auto base = PlantedC4Base{getPlantedC4()};
-        if (base.thisptr)
-            return std::optional<PlantedC4<HookDependencies&>>{PlantedC4<HookDependencies&>{base, *this}};
-        return std::optional<PlantedC4<HookDependencies&>>{};
+        return std::optional{make<PlantedC4<HookDependencies>>(getPlantedC4())};
     }
 
-    [[nodiscard]] ConVarAccessor getConVarAccessor() noexcept
+    [[nodiscard]] auto getConVarAccessor() noexcept
     {
-        if (!_gameDependencies.conVars.has_value()) {
-            if (_gameDependencies.cvarDeps.cvar && _gameDependencies.cvarDeps.offsetToConVarList) {
-                if (const auto cvar = *_gameDependencies.cvarDeps.cvar)
-                    _gameDependencies.conVars.emplace(ConVarFinder{*_gameDependencies.cvarDeps.offsetToConVarList.of(cvar).get()});
+        if (!fullGlobalContext.gameDependencies.conVars.has_value()) {
+            const auto cvar = fullGlobalContext.clientPatternSearchResults.template get<CvarPointer>();
+            if (cvar && *cvar && fullGlobalContext.tier0PatternSearchResults.template get<OffsetToConVarList>()) {
+                fullGlobalContext.gameDependencies.conVars.emplace(ConVarFinder{*fullGlobalContext.tier0PatternSearchResults.template get<OffsetToConVarList>().of(*cvar).get()});
             }
         }
-        return ConVarAccessor{*_gameDependencies.conVars, _gameDependencies.conVarDeps, conVarAccessorState};
+        return ConVarAccessor{*this, *fullGlobalContext.gameDependencies.conVars, conVarAccessorState};
     }
 
     template <typename T, typename... Args>
@@ -117,15 +119,10 @@ struct HookDependencies {
         return T{*this, std::forward<Args>(args)...};
     }
 
-    template <template <typename> typename T, typename... Args>
+    template <template <typename...> typename T, typename... Args>
     [[nodiscard]] auto make(Args&&... args) noexcept
     {
-        return T{*this, std::forward<Args>(args)...};
-    }
-
-    [[nodiscard]] auto panels() noexcept
-    {
-        return Panels{*this};
+        return T<HookDependencies>{*this, std::forward<Args>(args)...};
     }
 
     [[nodiscard]] auto panelFactory() noexcept
@@ -135,40 +132,56 @@ struct HookDependencies {
 
     [[nodiscard]] auto panoramaTransformFactory() noexcept
     {
-        return PanoramaTransformFactory{_gameDependencies.transformTranslate3dVmt, _gameDependencies.transformScale3dVmt};
+        return PanoramaTransformFactory{*this, fullGlobalContext.clientPatternSearchResults.template get<TransformTranslate3dVMT>(), fullGlobalContext.clientPatternSearchResults.template get<TransformScale3dVMT>()};
+    }
+
+    [[nodiscard]] const auto& panoramaSymbols() noexcept
+    {
+        auto& symbols = fullGlobalContext.gameDependencies.panoramaSymbols;
+        if (!symbols.has_value())
+            symbols.emplace(*this);
+        return *symbols;
+    }
+
+    [[nodiscard]] const auto& clientPatternSearchResults() noexcept
+    {
+        return fullGlobalContext.clientPatternSearchResults;
+    }
+
+    [[nodiscard]] const auto& sceneSystemPatternSearchResults() noexcept
+    {
+        return fullGlobalContext.sceneSystemPatternSearchResults;
+    }
+
+    [[nodiscard]] const auto& tier0PatternSearchResults() noexcept
+    {
+        return fullGlobalContext.tier0PatternSearchResults;
+    }
+
+    [[nodiscard]] const auto& fileSystemPatternSearchResults() noexcept
+    {
+        return fullGlobalContext.fileSystemPatternSearchResults;
+    }
+
+    [[nodiscard]] const auto& soundSystemPatternSearchResults() noexcept
+    {
+        return fullGlobalContext.soundSystemPatternSearchResults;
+    }
+
+    [[nodiscard]] const auto& panoramaPatternSearchResults() noexcept
+    {
+        return fullGlobalContext.panoramaPatternSearchResults;
     }
 
 private:
     [[nodiscard]] cs2::CPlantedC4* getPlantedC4() const noexcept
     {
-        const auto* const plantedC4s = _gameDependencies.plantedC4Deps.plantedC4s;
+        const auto* const plantedC4s = fullGlobalContext.clientPatternSearchResults.template get<PlantedC4sPointer>();
         if (plantedC4s && plantedC4s->size > 0)
             return plantedC4s->memory[0];
         return nullptr;
     }
 
-    template <typename Dependency>
-    [[nodiscard]] bool hasDependency() const noexcept
-    {
-        return presentDependencies.has<Dependency>();
-    }
-
-    void prepareDependencies(HookDependenciesMask requiredDependencies) noexcept
-    {
-        const HookDependenciesBuilder builder{requiredDependencies, _gameDependencies};
-
-        presentDependencies |= builder.getEntityList(&entityList, &highestEntityIndex);
-        presentDependencies |= builder.getSoundChannels(&soundChannels);
-        presentDependencies |= builder.getFileSystem(&fileSystem);
-    }
-
-    GameDependencies& _gameDependencies;
-    FeatureHelpers& featureHelpers;
-
-    const cs2::CConcreteEntityList* entityList;
-    cs2::CEntityIndex highestEntityIndex{cs2::kMaxValidEntityIndex};
-    cs2::SoundChannels* soundChannels;
-    cs2::CBaseFileSystem* fileSystem;
+    FullGlobalContext& fullGlobalContext;
     ConVarAccessorState conVarAccessorState;
-    HookDependenciesMask presentDependencies;
 };

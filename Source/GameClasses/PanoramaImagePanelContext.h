@@ -1,7 +1,8 @@
 #pragma once
 
-#include <CS2/Classes/Panorama.h>
-#include <GameDependencies/PanoramaImagePanelDeps.h>
+#include <CS2/Panorama/CImagePanel.h>
+#include <GameClasses/PanoramaUiPanel.h>
+#include <MemoryPatterns/PatternTypes/PanoramaImagePanelPatternTypes.h>
 
 template <typename HookContext>
 struct PanoramaImagePanelContext {
@@ -18,7 +19,7 @@ struct PanoramaImagePanelContext {
 
     [[nodiscard]] const char* getImagePath() const noexcept
     {
-        if (auto&& imagePath = PanoramaImagePanelDeps::instance().offsetToImagePath.of(panel).get())
+        if (auto&& imagePath = hookContext.clientPatternSearchResults().template get<OffsetToImagePath>().of(panel).get())
             return imagePath->m_pString;
         return nullptr;
     }

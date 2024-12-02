@@ -4,8 +4,9 @@
 #include <FeatureHelpers/FeatureToggle.h>
 #include <Utils/StringParser.h>
 
+template <typename HookContext>
 struct SetCommandHandler {
-    SetCommandHandler(StringParser& parser, Features features) noexcept
+    SetCommandHandler(StringParser& parser, Features<HookContext> features) noexcept
         : parser{parser}
         , features{features}
     {
@@ -31,6 +32,8 @@ private:
             handleTogglableFeature(features.hudFeatures().defusingAlertToggle());
         } else if (feature == "preserve_killfeed") {
             handleTogglableFeature(features.hudFeatures().killfeedPreserveToggle());
+        } else if (feature == "postround_timer") {
+            handleTogglableFeature(features.hudFeatures().postRoundTimerToggle());
         }
     }
 
@@ -54,7 +57,7 @@ private:
     void handleVisualsSection() const noexcept
     {
         if (const auto feature = parser.getLine('/'); feature == "player_information_through_walls") {
-            handleFeature(features.visualFeatures().playerInformationThroughWalls());
+            handleFeature(features.visualFeatures().playerInfoInWorld());
         } else if (feature == "player_info_position") {
             handleTogglableFeature(features.visualFeatures().playerPositionToggle());
         } else if (feature == "player_info_position_color") {
@@ -75,6 +78,34 @@ private:
             handleFeature(features.visualFeatures().hostageRescueIconToggle());
         } else if (feature == "player_info_blinded") {
             handleFeature(features.visualFeatures().blindedIconToggle());
+        } else if (feature == "player_info_bomb_carrier") {
+            handleTogglableFeature(features.visualFeatures().bombIconToggle());
+        } else if (feature == "player_info_bomb_planting") {
+            handleTogglableFeature(features.visualFeatures().bombPlantingIconToggle());
+        } else if (feature == "player_outline_glow") {
+            handleFeature(features.visualFeatures().playerOutlineGlowToggle());
+        } else if (feature == "player_outline_glow_color") {
+            features.visualFeatures().playerOutlineGlowToggle().updateColor(parser.getChar());
+        } else if (feature == "outline_glow_enable") {
+            handleTogglableFeature(features.visualFeatures().outlineGlowToggle());
+        } else if (feature == "weapon_outline_glow") {
+            handleTogglableFeature(features.visualFeatures().weaponOutlineGlowToggle());
+        } else if (feature == "defuse_kit_outline_glow") {
+            handleTogglableFeature(features.visualFeatures().defuseKitOutlineGlowToggle());
+        } else if (feature == "grenade_proj_outline_glow") {
+            handleTogglableFeature(features.visualFeatures().grenadeProjectileOutlineGlowToggle());
+        } else if (feature == "dropped_bomb_outline_glow") {
+            handleTogglableFeature(features.visualFeatures().droppedBombOutlineGlowToggle());
+        } else if (feature == "ticking_bomb_outline_glow") {
+            handleTogglableFeature(features.visualFeatures().tickingBombOutlineGlowToggle());
+        } else if (feature == "hostage_outline_glow") {
+            handleTogglableFeature(features.visualFeatures().hostageOutlineGlowToggle());
+        } else if (feature == "model_glow_enable") {
+            features.visualFeatures().modelGlowToggle().updateMasterSwitch(parser.getChar());
+        } else if (feature == "player_model_glow") {
+            features.visualFeatures().modelGlowToggle().updatePlayerModelGlowToggle(parser.getChar());
+        } else if (feature == "player_model_glow_color") {
+            features.visualFeatures().modelGlowToggle().updatePlayerModelGlowColor(parser.getChar());
         }
     }
 
@@ -99,5 +130,5 @@ private:
     }
 
     StringParser& parser;
-    Features features;
+    Features<HookContext> features;
 };

@@ -8,15 +8,12 @@
 #include <Utils/FieldOffset.h>
 
 struct MemAllocDeps {
-    template <typename MemAllocPatterns>
-    MemAllocDeps(Tier0Dll tier0Dll, const MemAllocPatterns& memAllocPatterns) noexcept
+    MemAllocDeps() = default;
+
+    MemAllocDeps(Tier0Dll tier0Dll) noexcept
         : thisptr{tier0Dll.memAlloc()}
-        , alloc{memAllocPatterns.allocOffset()}
     {
     }
 
-    [[nodiscard]] static const MemAllocDeps& instance() noexcept;
-
     cs2::IMemAlloc** thisptr;
-    FieldOffset<const void, cs2::IMemAlloc::Alloc*, std::int8_t> alloc;
 };

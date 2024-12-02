@@ -25,18 +25,16 @@ struct SoundVisualizationFeatureState {
     }
 };
 
-template <typename SoundType>
-struct SoundVisualizationFeatureToggle : FeatureToggleOnOff<SoundVisualizationFeatureToggle<SoundType>> {
+template <typename HookContext, typename SoundType>
+struct SoundVisualizationFeatureToggle : FeatureToggleOnOff<SoundVisualizationFeatureToggle<HookContext, SoundType>> {
     SoundVisualizationFeatureToggle(SoundVisualizationFeatureState& state,
-        HookDependencies& hookDependencies,
-        SoundWatcher soundWatcher,
-        ViewRenderHook& viewRenderHook,
-        HudInWorldPanelContainer& hudInWorldPanelContainer)
+        HookContext& hookContext,
+        SoundWatcher<HookContext> soundWatcher,
+        ViewRenderHook& viewRenderHook)
         : state{state}
-        , hookDependencies{hookDependencies}
+        , hookContext{hookContext}
         , soundWatcher{soundWatcher}
         , viewRenderHook{viewRenderHook}
-        , hudInWorldPanelContainer{hudInWorldPanelContainer}
     {
     }
 
@@ -47,42 +45,37 @@ struct SoundVisualizationFeatureToggle : FeatureToggleOnOff<SoundVisualizationFe
 
     void onEnable(typename SoundVisualizationFeatureToggle::ToggleMethod) noexcept
     {
-        viewRenderHook.incrementReferenceCount();
-        soundWatcher.startWatching<SoundType>();
+        soundWatcher.template startWatching<SoundType>();
     }
 
     void onDisable(typename SoundVisualizationFeatureToggle::ToggleMethod) noexcept
     {
-        viewRenderHook.decrementReferenceCount();
-        soundWatcher.stopWatching<SoundType>();
-        if (const auto containerPanel{hudInWorldPanelContainer.get(hookDependencies.hud(), hookDependencies)}) {
+        soundWatcher.template stopWatching<SoundType>();
+        if (const auto containerPanel{hookContext.template make<InWorldPanelContainer>().get()}) {
             if (const auto containerPanelChildren{containerPanel.children().vector})
-                state.hideRemainingPanels(hookDependencies, HudInWorldPanels{*containerPanelChildren}, 0);
+                state.hideRemainingPanels(hookContext, HudInWorldPanels{*containerPanelChildren}, 0);
         }
     }
 
 private:
     SoundVisualizationFeatureState& state;
-    HookDependencies& hookDependencies;
-    SoundWatcher soundWatcher;
+    HookContext& hookContext;
+    SoundWatcher<HookContext> soundWatcher;
     ViewRenderHook& viewRenderHook;
-    HudInWorldPanelContainer& hudInWorldPanelContainer;
 };
 
-template <typename PanelsType, typename SoundType>
+template <typename HookContext, typename PanelsType, typename SoundType>
 class SoundVisualizationFeature {
 public:
     SoundVisualizationFeature(
         SoundVisualizationFeatureState& state,
-        HookDependencies& hookDependencies,
+        HookContext& hookContext,
         ViewRenderHook& viewRenderHook,
-        SoundWatcher soundWatcher,
-        HudInWorldPanelContainer& hudInWorldPanelContainer) noexcept
+        SoundWatcher<HookContext> soundWatcher) noexcept
         : state{state}
-        , hookDependencies{hookDependencies}
+        , hookContext{hookContext}
         , viewRenderHook{viewRenderHook}
         , soundWatcher{soundWatcher}
-        , hudInWorldPanelContainer{hudInWorldPanelContainer}
     {
     }
 
@@ -91,15 +84,11 @@ public:
         if (!state.enabled)
             return;
 
-        constexpr auto kCrucialDependencies{HookDependenciesMask{}.set<WorldToClipSpaceConverter>()};
-        if (!hookDependencies.requestDependencies(kCrucialDependencies))
+        const auto curtime = hookContext.globalVars().curtime();
+        if (!curtime.hasValue())
             return;
 
-        const auto curtime = hookDependencies.globalVars().curtime();
-        if (!curtime)
-            return;
-
-        const auto containerPanel{hudInWorldPanelContainer.get(hookDependencies.hud(), hookDependencies)};
+        const auto containerPanel{hookContext.template make<InWorldPanelContainer>().get()};
         if (!containerPanel)
             return;
 
@@ -109,18 +98,18 @@ public:
 
         const HudInWorldPanels panels{*containerPanelChildren};
 
-        if (state.containerPanelHandle != PanoramaUiEngine::getPanelHandle(containerPanel)) {
+        if (state.containerPanelHandle != hookContext.template make<PanoramaUiEngine>().getPanelHandle(containerPanel)) {
             state.panelIndices.clear();
-            state.containerPanelHandle = PanoramaUiEngine::getPanelHandle(containerPanel);
+            state.containerPanelHandle = hookContext.template make<PanoramaUiEngine>().getPanelHandle(containerPanel);
         }
 
         std::size_t currentIndex = 0;
-        std::as_const(soundWatcher).getSoundsOfType<SoundType>().forEach([this, &currentIndex, containerPanel, panels, curtime](const PlayedSound& sound) {
-            const auto soundInClipSpace = hookDependencies.getDependency<WorldToClipSpaceConverter>().toClipSpace(sound.origin);
+        std::as_const(soundWatcher).template getSoundsOfType<SoundType>().forEach([this, &currentIndex, containerPanel, panels, curtime](const PlayedSound& sound) {
+            const auto soundInClipSpace = hookContext.template make<WorldToClipSpaceConverter>().toClipSpace(sound.origin);
             if (!soundInClipSpace.onScreen())
                 return;
 
-            const auto opacity = SoundVisualization<SoundType>::getOpacity(sound.getTimeAlive(*curtime));
+            const auto opacity = SoundVisualization<SoundType>::getOpacity(sound.getTimeAlive(curtime.value()));
             if (opacity <= 0.0f)
                 return;
 
@@ -133,36 +122,35 @@ public:
 
             const auto deviceCoordinates = soundInClipSpace.toNormalizedDeviceCoordinates();
 
-            auto&& transformFactory = hookDependencies.panoramaTransformFactory();
+            auto&& transformFactory = hookContext.panoramaTransformFactory();
             PanoramaTransformations{
-                transformFactory.scale(SoundVisualization<SoundType>::getScale(soundInClipSpace.z, ViewToProjectionMatrix{hookDependencies.gameDependencies().viewToProjectionMatrix}.getFovScale())),
+                transformFactory.scale(SoundVisualization<SoundType>::getScale(soundInClipSpace.z, ViewToProjectionMatrix{hookContext.clientPatternSearchResults().template get<ViewToProjectionMatrixPointer>()}.getFovScale())),
                 transformFactory.translate(deviceCoordinates.getX(), deviceCoordinates.getY())
             }.applyTo(panel);
 
             ++currentIndex;
         });
 
-        state.hideRemainingPanels(hookDependencies, panels, currentIndex);
+        state.hideRemainingPanels(hookContext, panels, currentIndex);
     }
 
 private:
     [[nodiscard]] auto getPanel(auto&& containerPanel, HudInWorldPanels inWorldPanels, std::size_t index) const noexcept
     {
         if (index < state.panelIndices.getSize()) {
-            if (const auto panel{inWorldPanels.getPanel(state.panelIndices[index], hookDependencies)})
+            if (const auto panel{inWorldPanels.getPanel(state.panelIndices[index], hookContext)})
                 return panel;
             state.panelIndices.fastRemoveAt(index);
         }
-        if (const auto panel{SoundVisualizationPanelFactory{hookDependencies, *static_cast<cs2::CUIPanel*>(containerPanel)}.createSoundVisualizationPanel(PanelsType::soundVisualizationPanelProperties())}) {
+        if (const auto panel{SoundVisualizationPanelFactory{hookContext, *static_cast<cs2::CUIPanel*>(containerPanel)}.createSoundVisualizationPanel(PanelsType::soundVisualizationPanelProperties())}) {
             state.panelIndices.pushBack(inWorldPanels.getIndexOfLastPanel());
             return panel;
         }
-        return PanoramaUiPanel{PanoramaUiPanelContext{hookDependencies, nullptr}};
+        return hookContext.template make<PanoramaUiPanel>(nullptr);
     }
 
     SoundVisualizationFeatureState& state;
-    HookDependencies& hookDependencies;
+    HookContext& hookContext;
     ViewRenderHook& viewRenderHook;
-    SoundWatcher soundWatcher;
-    HudInWorldPanelContainer& hudInWorldPanelContainer;
+    SoundWatcher<HookContext> soundWatcher;
 };

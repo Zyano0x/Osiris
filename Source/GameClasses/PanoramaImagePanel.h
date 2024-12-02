@@ -1,20 +1,27 @@
 #pragma once
 
-#include <CS2/Classes/Panorama.h>
-#include <GameDependencies/PanoramaImagePanelDeps.h>
+#include <bit>
+#include <optional>
+
+#include <CS2/Panorama/CImagePanel.h>
+#include <MemoryPatterns/PatternTypes/PanoramaImagePanelPatternTypes.h>
 
 #include "PanoramaImagePanelContext.h"
 
-template <typename Context>
-struct PanoramaImagePanel {
-    explicit PanoramaImagePanel(Context context) noexcept
-        : context{context}
-    {
-    }
+struct SvgImageParams {
+    const char* imageUrl;
+    int textureHeight{-1};
+    std::optional<cs2::Color> fillColor{};
+};
 
-    template <typename HookContext>
-    PanoramaImagePanel(HookContext& hookContext, cs2::CPanel2D* panel) noexcept
-        :  context{hookContext, static_cast<cs2::CImagePanel*>(panel)}
+template <typename HookContext, typename Context = PanoramaImagePanelContext<HookContext>>
+struct PanoramaImagePanel {
+    using RawType = cs2::CImagePanel;
+
+    template <typename... Args>
+        requires std::is_constructible_v<Context, Args...>
+    PanoramaImagePanel(Args&&... args) noexcept
+        : context{std::forward<Args>(args)...}
     {
     }
 
@@ -25,7 +32,7 @@ struct PanoramaImagePanel {
 
     [[nodiscard]] cs2::ImageProperties* getImageProperties() const noexcept
     {
-        return PanoramaImagePanelDeps::instance().imagePropertiesOffset.of(context.panel).get();
+        return context.hookContext.clientPatternSearchResults().template get<ImagePropertiesOffset>().of(context.panel).get();
     }
 
     [[nodiscard]] std::string_view getImagePath() const noexcept
@@ -37,6 +44,11 @@ struct PanoramaImagePanel {
 
     void setImageSvg(const char* imageUrl, int textureHeight = -1) const noexcept
     {
+        setImageSvg(SvgImageParams{.imageUrl = imageUrl, .textureHeight = textureHeight});
+    }
+
+    void setImageSvg(const SvgImageParams& params) const noexcept
+    {
         if (context.panel == nullptr)
             return;
 
@@ -44,15 +56,18 @@ struct PanoramaImagePanel {
         if (!properties)
             return;
 
-        properties->scale = context.uiPanel().getUiScaleFactor();
-        properties->textureHeight = textureHeight;
-        if (PanoramaImagePanelDeps::instance().setImage)
-            PanoramaImagePanelDeps::instance().setImage(context.panel, imageUrl, nullptr, properties);
+        properties->scale = context.uiPanel().getUiScaleFactor().valueOr(1.0f);
+        properties->textureHeight = params.textureHeight;
+
+        if (params.fillColor.has_value()) {
+            properties->svgAttributes[static_cast<std::size_t>(cs2::SvgAttributeType::FillColor)] = std::bit_cast<cs2::SvgAttribute>(*params.fillColor);
+            properties->presentSvgAttributes |= 1 << static_cast<std::size_t>(cs2::SvgAttributeType::FillColor);
+        }
+
+        if (context.hookContext.clientPatternSearchResults().template get<SetImageFunctionPointer>())
+            context.hookContext.clientPatternSearchResults().template get<SetImageFunctionPointer>()(context.panel, params.imageUrl, nullptr, properties);
     }
 
 private:
     Context context;
 };
-
-template <typename HookContext>
-PanoramaImagePanel(HookContext&, cs2::CPanel2D*) -> PanoramaImagePanel<PanoramaImagePanelContext<HookContext>>;

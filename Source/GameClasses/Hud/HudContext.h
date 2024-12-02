@@ -11,7 +11,7 @@ struct HudContext {
 
     [[nodiscard]] auto panel() noexcept
     {
-        auto&& hud = hookContext.gameDependencies().hudDeps.hud;
+        auto&& hud = hookContext.clientPatternSearchResults().template get<HudPanelPointer>();
         if (hud && *hud)
             return hookContext.template make<PanoramaUiPanel>((*hud)->uiPanel);
         return hookContext.template make<PanoramaUiPanel>(nullptr);
@@ -35,6 +35,16 @@ struct HudContext {
     [[nodiscard]] auto bombPlantedPanelHandle() noexcept
     {
         return hookContext.template make<PanelHandle>(hookContext.gameDependencies().hudDeps.bombPlantedPanelHandle);
+    }
+
+    [[nodiscard]] auto timerTextPanelHandle() noexcept
+    {
+        return hookContext.template make<PanelHandle>(hookContext.gameDependencies().hudDeps.timerTextPanelHandle);
+    }
+
+    void resetBombStatusVisibility() noexcept
+    {
+        hookContext.bombStatusPanelState().resetVisibility();
     }
     
 private:

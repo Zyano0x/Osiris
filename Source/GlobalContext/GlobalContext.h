@@ -14,6 +14,7 @@
 #include "DeferredCompleteObject.h"
 #include "FullGlobalContext.h"
 #include "PartialGlobalContext.h"
+#include "HookDependencies/HookDependencies.h"
 
 class GlobalContext {
 public:
@@ -54,15 +55,71 @@ public:
 
     [[nodiscard]] PeepEventsHookResult peepEventsHook() noexcept
     {
-        initializeCompleteContextFromGameThread();
-        return fullContext().onPeepEventsHook();
+        const auto justInitialized = initializeCompleteContextFromGameThread();
+
+        auto& fullCtx = fullContext();
+        HookDependencies dependencies{fullCtx};
+
+        if (justInitialized) {
+            if (const auto mainMenu{fullCtx.clientPatternSearchResults.get<MainMenuPanelPointer>()}; mainMenu && *mainMenu)
+                dependencies.make<PanoramaGUI>().init(dependencies.make<PanoramaUiPanel>((*mainMenu)->uiPanel));
+            fullCtx.hooks.peepEventsHook.disable();
+            fullCtx.hooks.viewRenderHook.install();
+        }
+        return PeepEventsHookResult{fullCtx.hooks.peepEventsHook.original};
+    }
+
+    [[nodiscard]] std::uint64_t playerPawnSceneObjectUpdater(cs2::C_CSPlayerPawn* playerPawn, void* unknown, bool unknownBool) noexcept
+    {
+        HookDependencies hookContext{fullContext()};
+        const auto originalReturnValue = hookContext.featuresStates().visualFeaturesStates.modelGlowState.originalPlayerPawnSceneObjectUpdater(playerPawn, unknown, unknownBool);
+        hookContext.make<ModelGlow>().applyModelGlow(hookContext.make<PlayerPawn>(playerPawn));
+        return originalReturnValue;
+    }
+
+    [[nodiscard]] UnloadFlag onRenderStartHook(cs2::CViewRender* viewRender) noexcept
+    {
+        HookDependencies dependencies{fullContext()};
+        fullContext().hooks.viewRenderHook.getOriginalOnRenderStart()(viewRender);
+        SoundWatcher<decltype(dependencies)> soundWatcher{fullContext().soundWatcherState, dependencies};
+        soundWatcher.update();
+        fullContext().features(dependencies).soundFeatures().runOnViewMatrixUpdate();
+
+        auto&& playerInfoInWorld = dependencies.make<PlayerInfoInWorld>();
+        RenderingHookEntityLoop{dependencies, playerInfoInWorld}.run();
+        playerInfoInWorld.hideUnusedPanels();
+        dependencies.make<GlowSceneObjects>().removeUnreferencedObjects();
+
+        fullContext().features(dependencies).hudFeatures().defusingAlert().run();
+        fullContext().features(dependencies).hudFeatures().killfeedPreserver().run();
+        BombStatusPanelManager{BombStatusPanelManagerContext{dependencies}}.run();
+
+        UnloadFlag unloadFlag;
+        dependencies.make<PanoramaGUI>().run(fullContext().features(dependencies), unloadFlag);
+
+        if (unloadFlag) {
+            FeaturesUnloadHandler{dependencies, fullContext().featuresStates}.handleUnload();
+            BombStatusPanelUnloadHandler{dependencies}.handleUnload();
+            InWorldPanelContainerUnloadHandler{dependencies}.handleUnload();
+            PanoramaGuiUnloadHandler{dependencies}.handleUnload();
+            fullContext().hooks.viewRenderHook.uninstall();
+
+            dependencies.make<EntitySystem>().iterateEntities([&dependencies](auto& entity) {
+                auto&& baseEntity = dependencies.make<BaseEntity>(static_cast<cs2::C_BaseEntity*>(&entity));
+                const auto entityTypeInfo = dependencies.entityClassifier().classifyEntity(dependencies.gameDependencies().entitiesVMTs, entity.vmt);
+
+                if (entityTypeInfo.template is<cs2::C_CSPlayerPawn>())
+                    dependencies.make<ModelGlow>().onUnload(baseEntity.as<PlayerPawn>());
+            });
+        }
+        return unloadFlag;
     }
 
 private:
-    void initializeCompleteContextFromGameThread() noexcept
+    bool initializeCompleteContextFromGameThread() noexcept
     {
         if (deferredCompleteContext.isComplete())
-            return;
+            return false;
 
         const auto partialContext = deferredCompleteContext.partial();
 
@@ -73,9 +130,7 @@ private:
             MemoryPatterns{partialContext.patternFinders}
         );
 
-        HookDependencies hookDependencies{fullContext().gameDependencies(), fullContext().getFeatureHelpers()};
-        if (const auto mainMenu{fullContext().gameDependencies().mainMenu}; mainMenu && *mainMenu)
-            fullContext().panoramaGUI.init(PanoramaUiPanel{PanoramaUiPanelContext{hookDependencies, (*mainMenu)->uiPanel}});
+        return true;
     }
 
     FreeMemoryRegionList _freeRegionList;

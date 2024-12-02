@@ -8,12 +8,17 @@
 #include "BytePatternView.h"
 #include <Helpers/PatternNotFoundLogger.h>
 #include "HybridPatternFinder.h"
+#include "PatternPoolView.h"
+#include "PatternSearchResults.h"
+#include "PatternSearchResultsView.h"
+
 #include <MemorySearch/PatternSearchResult.h>
 #include <Utils/GenericPointer.h>
 #include <Utils/SpanSlice.h>
 
 #include <Platform/Macros/FunctionAttributes.h>
 #include "PatternStringWildcard.h"
+#include "CodePatternOperation.h"
 
 enum class OffsetHint : std::size_t {};
 
@@ -31,9 +36,37 @@ public:
         return operator()(patternView.data(), PatternLength);
     }
 
+    [[nodiscard]] auto findPatterns(const auto& patterns) const noexcept
+    {
+        PatternSearchResults<std::remove_reference_t<decltype(patterns)>> results;
+        findPatterns(patterns.getView(), results.getView());
+        return results;
+    }
+
+    [[NOINLINE]] void findPatterns(PatternPoolView patterns, PatternSearchResultsView results) const noexcept
+    {
+        patterns.forEach([patternIndex = std::size_t{0}, results, this](BytePattern pattern, std::uint8_t offset, CodePatternOperation operation) mutable {
+            auto result = operator()(pattern);
+            result.add(offset);
+
+            std::array<std::byte, 8> resultToStore{};
+            if (operation == CodePatternOperation::None) {
+                resultToStore = result.get();
+            } else if (operation == CodePatternOperation::Abs4 || operation == CodePatternOperation::Abs5) {
+                resultToStore = result.abs2(operation == CodePatternOperation::Abs4 ? 4 : 5);
+            } else if (operation == CodePatternOperation::Read) {
+                resultToStore = result.read();
+            }
+            results.store(patternIndex, resultToStore);
+            ++patternIndex;
+        });
+    }
+
     [[nodiscard]] [[NOINLINE]] PatternSearchResult operator()(BytePattern pattern) const noexcept
     {
-        const auto found = HybridPatternFinder{bytes, pattern}.findNextOccurrence();
+        auto patternFinder = HybridPatternFinder{bytes, pattern};
+        const auto found = patternFinder.findNextOccurrence();
+        assert(patternFinder.findNextOccurrence() == nullptr && "Pattern should be unique!");
         if (!found)
             NotFoundHandler::onPatternNotFound(pattern);
         return makeResult(found, pattern.length());

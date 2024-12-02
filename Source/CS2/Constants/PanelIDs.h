@@ -1,6 +1,6 @@
 #pragma once
 
-namespace cs2
+namespace cs2::panel_id
 {
 
 constexpr auto HudTeamCounter = "HudTeamCounter";
@@ -13,5 +13,6 @@ constexpr auto BombPlanted = "BombPlanted";
 constexpr auto HudDeathNotice = "HudDeathNotice";
 constexpr auto VisibleNotices = "VisibleNotices";
 constexpr auto HudReticle = "HudReticle";
+constexpr auto TimerText = "TimerText";
 
 }

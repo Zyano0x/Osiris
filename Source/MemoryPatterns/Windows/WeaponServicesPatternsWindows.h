@@ -1,14 +1,13 @@
 #pragma once
 
-#include <GameClasses/OffsetTypes/WeaponServicesOffset.h>
-#include <MemorySearch/BytePatternLiteral.h>
+#include <MemoryPatterns/PatternTypes/WeaponServicesPatternTypes.h>
+#include <MemorySearch/CodePattern.h>
 
-template <typename PatternFinders>
 struct WeaponServicesPatterns {
-    const PatternFinders& patternFinders;
-
-    [[nodiscard]] OffsetToActiveWeapon offsetToActiveWeapon() const noexcept
+    [[nodiscard]] static consteval auto addClientPatterns(auto clientPatterns) noexcept
     {
-        return patternFinders.clientPatternFinder("? FF FF FF FF 48 85 D2 75 ? ? 8B"_pat).template readOffset<OffsetToActiveWeapon>();
+        return clientPatterns
+            .template addPattern<OffsetToActiveWeapon, CodePattern{"? FF FF FF FF 48 85 D2 75 ? ? 8B"}.read()>()
+            .template addPattern<OffsetToWeapons, CodePattern{"DB 48 8B F9 39 59 ?"}.add(6).read()>();
     }
 };

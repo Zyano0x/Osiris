@@ -10,7 +10,6 @@
 
 #include <CS2/Classes/Sound.h>
 #include <GameClasses/FileSystem.h>
-#include <HookDependencies/HookDependencies.h>
 #include "PlayedSound.h"
 #include "WatchedSounds.h"
 #include <Utils/BitFlags.h>
@@ -21,15 +20,15 @@
 #include "SoundExpiryChecker.h"
 #include "SoundWatcherImplState.h"
 
-template <typename Sounds>
+template <typename HookContext, typename Sounds>
 class SoundWatcherImpl;
 
-template <typename... Sounds>
-class SoundWatcherImpl<SoundWatcherImplState<Sounds...>> {
+template <typename HookContext, typename... Sounds>
+class SoundWatcherImpl<HookContext, SoundWatcherImplState<Sounds...>> {
 public:
-    explicit SoundWatcherImpl(SoundWatcherImplState<Sounds...>& state, HookDependencies& hookDependencies) noexcept
+    explicit SoundWatcherImpl(SoundWatcherImplState<Sounds...>& state, HookContext& hookContext) noexcept
         : state{state}
-        , hookDependencies{hookDependencies}
+        , hookContext{hookContext}
     {
     }
 
@@ -49,17 +48,16 @@ public:
 
     void update() noexcept
     {
-        constexpr auto kCrucialDependencies{HookDependenciesMask{}.set<SoundChannels>()};
-        if (!hookDependencies.requestDependencies(kCrucialDependencies))
+        const auto curtime = hookContext.globalVars().curtime();
+        if (!curtime.hasValue())
             return;
 
-        const auto curtime = hookDependencies.globalVars().curtime();
-        if (!curtime)
+        auto soundChannels = hookContext.soundSystemPatternSearchResults().template get<SoundChannelsPointer>();
+        if (!soundChannels || !*soundChannels)
             return;
 
-        auto& soundChannels = hookDependencies.getDependency<SoundChannels>();
-        (removeExpiredSounds<Sounds>(soundChannels, *curtime), ...);
-        collectNewSounds(soundChannels, *curtime);
+        (removeExpiredSounds<Sounds>(**soundChannels, curtime.value()), ...);
+        collectNewSounds(**soundChannels, curtime.value());
     }
 
     template <typename Sound>
@@ -93,10 +91,7 @@ private:
         if (!state.soundsToWatch)
             return;
 
-        if (!hookDependencies.requestDependency<FileSystem>())
-            return;
-
-        const auto fileNames = hookDependencies.getDependency<FileSystem>().fileNames();
+        const auto fileNames = hookContext.template make<FileSystem<HookContext>>().fileNames();
         if (!fileNames)
             return;
 
@@ -151,5 +146,5 @@ private:
     }
 
     SoundWatcherImplState<Sounds...>& state;
-    HookDependencies& hookDependencies;
+    HookContext& hookContext;
 };

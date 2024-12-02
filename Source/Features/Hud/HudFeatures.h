@@ -1,8 +1,5 @@
 #pragma once
 
-#include <FeatureHelpers/FeatureHelpers.h>
-#include <HookDependencies/HookDependencies.h>
-
 #include "BombTimer/BombTimer.h"
 #include "BombTimer/BombTimerContext.h"
 #include "BombTimer/BombTimerToggle.h"
@@ -12,41 +9,50 @@
 #include "KillfeedPreserver/KillfeedPreserver.h"
 #include "KillfeedPreserver/KillfeedPreserverContext.h"
 #include "KillfeedPreserver/KillfeedPreserveToggle.h"
+#include "PostRoundTimer/PostRoundTimer.h"
+#include "PostRoundTimer/PostRoundTimerContext.h"
+#include "PostRoundTimer/PostRoundTimerToggle.h"
 
 #include "HudFeaturesStates.h"
 
+template <typename HookContext>
 struct HudFeatures {
-    [[nodiscard]] auto bombTimer() const noexcept
+    HudFeatures(HudFeaturesStates& states, HookContext& hookContext) noexcept
+        : states{states}
+        , hookContext{hookContext}
     {
-        return BombTimer{BombTimerContext{hookDependencies, states.bombTimerState}};
     }
 
     [[nodiscard]] auto bombTimerToggle() const noexcept
     {
-        return BombTimerToggle{BombTimerContext{hookDependencies, states.bombTimerState}};
+        return BombTimerToggle{BombTimerContext{hookContext}};
     }
 
     [[nodiscard]] auto defusingAlert() const noexcept
     {
-        return DefusingAlert{DefusingAlertContext{hookDependencies, states.defusingAlertState}};
+        return DefusingAlert{DefusingAlertContext{hookContext, states.defusingAlertState}};
     }
 
     [[nodiscard]] auto defusingAlertToggle() const noexcept
     {
-        return DefusingAlertToggle{DefusingAlertContext{hookDependencies, states.defusingAlertState}};
+        return DefusingAlertToggle{DefusingAlertContext{hookContext, states.defusingAlertState}};
     }
     
     [[nodiscard]] auto killfeedPreserver() const noexcept
     {
-        return KillfeedPreserver{KillfeedPreserverContext{states.killfeedPreserverState, hookDependencies}};
+        return KillfeedPreserver{KillfeedPreserverContext{states.killfeedPreserverState, hookContext}};
     }
 
     [[nodiscard]] auto killfeedPreserveToggle() const noexcept
     {
-        return KillfeedPreserveToggle{KillfeedPreserverContext{states.killfeedPreserverState, hookDependencies}};
+        return KillfeedPreserveToggle{KillfeedPreserverContext{states.killfeedPreserverState, hookContext}};
+    }
+
+    [[nodiscard]] decltype(auto) postRoundTimerToggle() const noexcept
+    {
+        return hookContext.template make<PostRoundTimerToggle>();
     }
 
     HudFeaturesStates& states;
-    FeatureHelpers& helpers;
-    HookDependencies& hookDependencies;
+    HookContext& hookContext;
 };

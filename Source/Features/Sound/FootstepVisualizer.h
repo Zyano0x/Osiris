@@ -1,7 +1,5 @@
 #pragma once
 
-#include <CS2/Classes/Panorama.h>
-
 #include "Details/SoundVisualizationFeature.h"
 #include "Details/SoundVisualizationPanelProperties.h"
 
@@ -14,4 +12,5 @@ struct FootstepPanels {
     }
 };
 
-using FootstepVisualizer = SoundVisualizationFeature<FootstepPanels, FootstepSound>;
+template <typename HookContext>
+using FootstepVisualizer = SoundVisualizationFeature<HookContext, FootstepPanels, FootstepSound>;

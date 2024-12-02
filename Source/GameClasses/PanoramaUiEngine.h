@@ -1,52 +1,74 @@
 #pragma once
 
-#include <CS2/Classes/Panorama.h>
+#include <CS2/Panorama/CUIEngine.h>
 #include <Platform/Macros/IsPlatform.h>
-#include <GameDependencies/PanoramaUiEngineDeps.h>
+#include <MemoryPatterns/PatternTypes/UiEnginePatternTypes.h>
 
-struct PanoramaUiEngine {
-    static void runScript(cs2::CUIPanel* contextPanel, const char* scriptSource, const char* originFile, std::uint64_t line) noexcept
+template <typename HookContext, typename Context>
+struct PanoramaUiPanel;
+
+template <typename HookContext>
+class PanoramaUiEngine {
+public:
+    explicit PanoramaUiEngine(HookContext& hookContext) noexcept
+        : hookContext{hookContext}
     {
-        if (impl().runScript && impl().thisptr)
-            impl().runScript(*impl().thisptr, contextPanel, scriptSource, originFile, line);
     }
 
-    static cs2::CUIPanel* getPanelPointer(cs2::PanelHandle handle) noexcept
+    void runScript(cs2::CUIPanel* contextPanel, const char* scriptSource, const char* originFile, std::uint64_t line) noexcept
     {
-        if (impl().getPanelPointer && impl().thisptr)
-            return impl().getPanelPointer(*impl().thisptr, &handle);
-        return nullptr;
+        if (hookContext.panoramaPatternSearchResults().template get<RunScriptFunctionPointer>() && thisptr())
+            hookContext.panoramaPatternSearchResults().template get<RunScriptFunctionPointer>()(*thisptr(), contextPanel, scriptSource, originFile, line);
     }
 
-    static cs2::PanelHandle getPanelHandle(cs2::CUIPanel* panel) noexcept
+    [[nodiscard]] decltype(auto) getPanelFromHandle(cs2::PanelHandle handle) noexcept
+    {
+        if (hookContext.panoramaPatternSearchResults().template get<GetPanelPointerFunctionPointer>() && thisptr())
+            return hookContext.template make<PanoramaUiPanel>(hookContext.panoramaPatternSearchResults().template get<GetPanelPointerFunctionPointer>()(*thisptr(), &handle));
+        return hookContext.template make<PanoramaUiPanel>(nullptr);
+    }
+
+    [[nodiscard]] cs2::PanelHandle getPanelHandle(cs2::CUIPanel* panel) noexcept
     {
         cs2::PanelHandle handle{};
-        if (impl().getPanelHandle && impl().thisptr) {
+        if (hookContext.panoramaPatternSearchResults().template get<GetPanelHandleFunctionPointer>() && thisptr()) {
 #if IS_WIN64()
-            impl().getPanelHandle(*impl().thisptr, &handle, panel);
+            hookContext.panoramaPatternSearchResults().template get<GetPanelHandleFunctionPointer>()(*thisptr(), &handle, panel);
 #elif IS_LINUX()
-            handle = impl().getPanelHandle(*impl().thisptr, panel);
+            handle = hookContext.panoramaPatternSearchResults().template get<GetPanelHandleFunctionPointer>()(*thisptr(), panel);
 #endif
         }
         return handle;
     }
 
-    static void onDeletePanel(cs2::PanelHandle panelHandle) noexcept
+    void deletePanelByHandle(cs2::PanelHandle handle) noexcept
     {
-        if (impl().onDeletePanel && impl().thisptr)
-            impl().onDeletePanel(*impl().thisptr, &panelHandle);
+        if (handle.isValid())
+            onDeletePanel(handle);
     }
 
-    static cs2::CPanoramaSymbol makeSymbol(int type, const char* text) noexcept
+    [[nodiscard]] cs2::CPanoramaSymbol makeSymbol(int type, const char* text) noexcept
     {
-        if (impl().makeSymbol && impl().thisptr)
-            return impl().makeSymbol(*impl().thisptr, type, text);
+        if (hookContext.panoramaPatternSearchResults().template get<MakeSymbolFunctionPointer>() && thisptr())
+#if IS_WIN64()
+            return hookContext.panoramaPatternSearchResults().template get<MakeSymbolFunctionPointer>()(type, text);
+#elif IS_LINUX()
+            return hookContext.panoramaPatternSearchResults().template get<MakeSymbolFunctionPointer>()(*thisptr(), type, text);
+#endif
         return -1;
     }
 
 private:
-    [[nodiscard]] static const PanoramaUiEngineDeps& impl() noexcept
+    [[nodiscard]] auto thisptr() const noexcept
     {
-        return PanoramaUiEngineDeps::instance();
+        return hookContext.clientPatternSearchResults().template get<UiEnginePointer>();
     }
+
+    void onDeletePanel(cs2::PanelHandle panelHandle) noexcept
+    {
+        if (hookContext.panoramaPatternSearchResults().template get<OnDeletePanelFunctionPointer>() && thisptr())
+            hookContext.panoramaPatternSearchResults().template get<OnDeletePanelFunctionPointer>()(*thisptr(), &panelHandle);
+    }
+
+    HookContext& hookContext;
 };

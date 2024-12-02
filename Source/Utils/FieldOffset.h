@@ -2,6 +2,8 @@
 
 #include <concepts>
 
+#include "Optional.h"
+
 template <typename FieldType>
 struct FieldValueProxy {
     explicit FieldValueProxy(FieldType* field) noexcept
@@ -12,6 +14,13 @@ struct FieldValueProxy {
     [[nodiscard]] FieldType* get() const noexcept
     {
         return field;
+    }
+
+    [[nodiscard]] Optional<FieldType> toOptional() const noexcept
+    {
+        if (field)
+            return *field;
+        return {};
     }
 
     [[nodiscard]] FieldType valueOr(const FieldType& defaultValue) const noexcept

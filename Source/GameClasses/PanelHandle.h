@@ -1,6 +1,6 @@
 #pragma once
 
-#include <CS2/Classes/Panorama.h>
+#include <CS2/Panorama/PanelHandle.h>
 #include <Utils/Lvalue.h>
 
 #include <utility>
@@ -16,7 +16,7 @@ struct PanelHandle {
     template <typename F>
     [[nodiscard]] decltype(auto) getOrInit(F&& f) noexcept
     {
-        if (auto&& panel = hookContext.panels().getPanelFromHandle(std::as_const(handle)))
+        if (auto&& panel = hookContext.template make<PanoramaUiEngine>().getPanelFromHandle(std::as_const(handle)))
             return utils::lvalue<decltype(panel)>(panel);
 
         auto&& panel = std::forward<F>(f)();

@@ -7,25 +7,28 @@ Cross-platform (Windows, Linux) game hack for **Counter-Strike 2** with GUI and 
 
 ## What's new
 
-* 20 May 2024 - Implemented showing players' active weapon ammo
+* 30 November 2024
+    * Player outline glow now works also when the local player is dead
 
-![Player active weapon ammo](https://github.com/danielkrupinski/Osiris/assets/34515229/9a6dfc37-ee9f-4b70-9b1f-0e4465bf58fb)
+* 18 November 2024
+    * Player model glow can now use color based on player health
 
-* 15 May 2024 - Implemented showing an icon on player blinded by a flashbang
+    ![Player model glow health color](https://github.com/user-attachments/assets/9e2d6218-3ac3-46e4-8b76-38ff0f4cf77a)
 
-![Player blinded by flashbang](https://github.com/danielkrupinski/Osiris/assets/34515229/18b10e66-545a-449f-8783-691d5c1b2003)
+* 16 November 2024
+    * Player model glow can now use player color
 
-* 14 May 2024 - Implemented showing an icon on player rescuing a hostage
+    ![Player model glow using player color](https://github.com/user-attachments/assets/d5832888-1520-49fe-8deb-b3312749d466)
 
-![Player rescuing hostage](https://github.com/danielkrupinski/Osiris/assets/34515229/057b6dc7-1b54-44c0-9443-6917d2394335)
+* 15 November 2024
+    * Added player model glow feature
 
-* 7 May 2024 - Implemented showing an icon on player picking up a hostage
+    ![Player Model Glow](https://github.com/user-attachments/assets/c2c0d8fa-da23-4c4c-aebd-f262da0c8cd5)
 
-![Player picking up hostage](https://github.com/danielkrupinski/Osiris/assets/34515229/d3a27f1a-dd79-4d18-bfbb-d8bb8c47ae2d)
+* 2 November 2024
+    * Moved player bomb carrying/planting icon next to the active weapon icon
 
-* 6 May 2024 - Adjusted "Bomb timer" appearance. Implemented showing an icon on player defusing the bomb
-
-![Player defusing icon](https://github.com/danielkrupinski/Osiris/assets/34515229/4addfc99-27d8-4f9d-a1b7-eb2b7c7565bd)
+    ![Player bomb icon next to the active weapon icon](https://github.com/user-attachments/assets/f3d88714-825a-4649-b7ba-31fadb1fe3b9)
 
 ## Technical features
 
@@ -47,7 +50,7 @@ Cross-platform (Windows, Linux) game hack for **Counter-Strike 2** with GUI and 
 #### Linux
 
 * **CMake 3.24** or newer
-* **g++ 11 or newer** or **clang++ 15 or newer**
+* **g++ 11 or newer** or **clang++ 17 or newer**
 
 ### Compiling from source
 

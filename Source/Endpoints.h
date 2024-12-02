@@ -9,20 +9,19 @@ extern "C"
 
 sdl3::SDL_PeepEvents* SDLHook_PeepEvents_cpp() noexcept
 {
-    const auto [original, shouldUnload] {GlobalContext::instance().peepEventsHook()};
-    if (shouldUnload)
-        GlobalContext::destroyInstance();
-    return original;
-}
-
-cs2::CLoopModeGame::getWorldSession LoopModeGameHook_getWorldSession_cpp(const void* returnAddress) noexcept
-{
-    return GlobalContext::instance().fullContext().getWorldSessionHook(ReturnAddress{returnAddress});
+    return GlobalContext::instance().peepEventsHook().original;
 }
 
 void ViewRenderHook_onRenderStart_cpp(cs2::CViewRender* thisptr) noexcept
 {
-    GlobalContext::instance().fullContext().onRenderStart(thisptr);
+    const auto unloadFlag = GlobalContext::instance().onRenderStartHook(thisptr);
+    if (unloadFlag)
+        GlobalContext::destroyInstance();
+}
+
+std::uint64_t PlayerPawn_sceneObjectUpdater_cpp(cs2::C_CSPlayerPawn* playerPawn, void* unknown, bool unknownBool) noexcept
+{
+    return GlobalContext::instance().playerPawnSceneObjectUpdater(playerPawn, unknown, unknownBool);
 }
 
 }
